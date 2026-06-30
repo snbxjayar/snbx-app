@@ -83,12 +83,18 @@ export default function GatewaySetupScreen() {
   const requestPermissionsAndLoadSims = async () => {
   try {
     // First request basic permissions
-    const grants = await PermissionsAndroid.requestMultiple([
-      PermissionsAndroid.PERMISSIONS.SEND_SMS,
-      PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
-      PermissionsAndroid.PERMISSIONS.READ_SMS,
-      PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
-    ]);
+    const permissionsToRequest = [
+  PermissionsAndroid.PERMISSIONS.SEND_SMS,
+  PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
+  PermissionsAndroid.PERMISSIONS.READ_SMS,
+  PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+];
+
+if (Platform.OS === "android" && Platform.Version >= 33) {
+  permissionsToRequest.push(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+}
+
+const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
 
     const allGranted = Object.values(grants).every(
       (g) => g === PermissionsAndroid.RESULTS.GRANTED
