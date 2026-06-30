@@ -17,7 +17,17 @@
         "monochromeImage": "./assets/images/snbx-logo.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.snbxjayar.snbxapp"
+      "package": "com.snbxjayar.snbxapp",
+      "permissions": [
+        "android.permission.SEND_SMS",
+        "android.permission.RECEIVE_SMS",
+        "android.permission.READ_SMS",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_PHONE_NUMBERS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_DATA_SYNC"
+      ]
     },
     "web": {
       "output": "static",
