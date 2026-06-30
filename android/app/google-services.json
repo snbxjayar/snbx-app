@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "103647201972",
+    "project_id": "snbx-app",
+    "storage_bucket": "snbx-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:103647201972:android:78d53464d0c13a522225e1",
+        "android_client_info": {
+          "package_name": "com.snbxjayar.snbxapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4aXRYGOzWrPSaOswC9-p4MOCYdzvtAJU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

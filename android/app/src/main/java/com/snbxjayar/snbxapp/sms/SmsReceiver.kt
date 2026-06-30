@@ -52,10 +52,10 @@ class SmsReceiver : BroadcastReceiver() {
 
                 db.collection("sms_inbox")
                     .add(inboxDoc)
-                    .addOnSuccessListener { ref ->
+                    .addOnSuccessListener { ref: com.google.firebase.firestore.DocumentReference ->
                         Log.d("SNBXSmsReceiver", "Saved to Firestore: ${ref.id}")
                     }
-                    .addOnFailureListener { e ->
+                    .addOnFailureListener { e: Exception ->
                         Log.e("SNBXSmsReceiver", "Firestore save failed: ${e.message}")
                     }
             }
