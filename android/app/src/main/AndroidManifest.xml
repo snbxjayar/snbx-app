@@ -2,14 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-  <!-- ── Standard Expo permissions ── -->
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
-
-  <!-- ── SNBX SMS Gateway permissions ── -->
   <uses-permission android:name="android.permission.SEND_SMS"/>
   <uses-permission android:name="android.permission.RECEIVE_SMS"/>
   <uses-permission android:name="android.permission.READ_SMS"/>
@@ -18,16 +15,13 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
       <category android:name="android.intent.category.BROWSABLE"/>
       <data android:scheme="https"/>
-    </intent>
-    <intent>
-      <action android:name="android.intent.action.MAIN"/>
     </intent>
   </queries>
 
@@ -41,13 +35,11 @@
       android:supportsRtl="true"
       android:enableOnBackInvokedCallback="false">
 
-    <!-- Expo updates meta-data -->
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
     <meta-data android:name="expo.modules.updates.ENABLE_BSDIFF_PATCH_SUPPORT" android:value="true"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
 
-    <!-- ── Main Activity ── -->
     <activity
         android:name=".MainActivity"
         android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize"
@@ -57,13 +49,11 @@
         android:exported="true"
         android:screenOrientation="portrait">
 
-      <!-- App launcher -->
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
 
-      <!-- Deep link -->
       <intent-filter>
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
@@ -71,14 +61,12 @@
         <data android:scheme="snbxapp"/>
       </intent-filter>
 
-      <!-- SMS: Send plain text -->
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <data android:mimeType="text/plain"/>
       </intent-filter>
 
-      <!-- SMS: Send to sms/smsto URI -->
       <intent-filter>
         <action android:name="android.intent.action.SENDTO"/>
         <category android:name="android.intent.category.DEFAULT"/>
@@ -86,7 +74,6 @@
         <data android:scheme="smsto"/>
       </intent-filter>
 
-      <!-- Required for default SMS app candidacy -->
       <intent-filter>
         <action android:name="android.intent.action.RESPOND_VIA_MESSAGE"/>
         <category android:name="android.intent.category.DEFAULT"/>
@@ -98,19 +85,21 @@
 
     </activity>
 
-    <!-- ── SNBX SMS Gateway Service ── -->
+    <!-- Gateway Service -->
     <service
         android:name=".sms.GatewayService"
         android:enabled="true"
         android:exported="false"
-        android:foregroundServiceType="dataSync"/>
+        android:foregroundServiceType="dataSync"
+        tools:node="replace"/>
 
-    <!-- ── Incoming SMS Receiver ── -->
+    <!-- Incoming SMS Receiver -->
     <receiver
         android:name=".sms.SmsReceiver"
         android:enabled="true"
         android:exported="true"
-        android:permission="android.permission.BROADCAST_SMS">
+        android:permission="android.permission.BROADCAST_SMS"
+        tools:node="replace">
       <intent-filter android:priority="999">
         <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
       </intent-filter>
@@ -119,10 +108,11 @@
       </intent-filter>
     </receiver>
 
-    <!-- ── MMS Receiver (required for default SMS app candidacy) ── -->
+    <!-- MMS Receiver -->
     <receiver
         android:name=".sms.SmsReceiver"
-        android:exported="true">
+        android:exported="true"
+        tools:node="replace">
       <intent-filter>
         <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER"/>
         <data android:mimeType="application/vnd.wap.mms-message"/>
