@@ -56,17 +56,18 @@ class GatewayService : Service() {
                 }
 
                 snapshots?.documentChanges?.forEach { change ->
-                    val doc  = change.document
-                    val data = doc.data
-                    val to   = data["to"] as? String ?: return@forEach
-                    val body = data["body"] as? String ?: return@forEach
-                    val jobId = doc.id
+                    if (change.type != com.google.firebase.firestore.DocumentChange.Type.ADDED) return@forEach
+                                    val doc  = change.document
+                                    val data = doc.data
+                                    val to   = data["to"] as? String ?: return@forEach
+                                    val body = data["body"] as? String ?: return@forEach
+                                    val jobId = doc.id
 
-                    Log.d("SNBXGateway", "Processing job $jobId → $to")
-                    processJob(jobId, to, body)
-                }
-            }
-    }
+                                    Log.d("SNBXGateway", "Processing job $jobId → $to")
+                                    processJob(jobId, to, body)
+                                }
+                            }
+                    }
 
     // ── Process a single SMS job ──────────────────────────────────────────────
     private fun processJob(jobId: String, to: String, body: String) {

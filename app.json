@@ -7,6 +7,14 @@
     "icon": "./assets/images/snbx-logo.png",
     "scheme": "snbxapp",
     "userInterfaceStyle": "automatic",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/310a9b65-1c14-432f-af82-535fce414320",
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
     "ios": {
       "icon": "./assets/expo.icon"
     },
@@ -27,8 +35,8 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
-  "android.permission.POST_NOTIFICATIONS",
-  "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
       ]
     },
     "web": {
@@ -36,17 +44,17 @@
       "favicon": "./assets/images/snbx-logo.png"
     },
     "plugins": [
-  "expo-router",
-  [
-    "expo-splash-screen",
-    {
-      "backgroundColor": "#FFFFFF",
-      "android": {
-        "image": "./assets/images/snbx-logo.png",
-        "imageWidth": 76
-      }
-    }
-  ]
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "android": {
+            "image": "./assets/images/snbx-logo.png",
+            "imageWidth": 76
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

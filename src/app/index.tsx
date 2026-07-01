@@ -12,6 +12,10 @@ import {
 } from "react-native";
 import { useEffect, useRef } from "react";
 
+import { onAuthStateChanged } from "firebase/auth";
+import { getDoc, doc } from "firebase/firestore";
+import { auth, db } from "../firebase";
+
 const { width } = Dimensions.get("window");
 
 const C = {
@@ -30,6 +34,21 @@ export default function HomeScreen() {
   const orbOpacity = useRef(new Animated.Value(0.7)).current;
   const fadeAnim   = useRef(new Animated.Value(0)).current;
   const slideAnim  = useRef(new Animated.Value(32)).current;
+
+  useEffect(() => {
+  const unsub = onAuthStateChanged(auth, async (user) => {
+    if (!user) return; // stay on splash
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    if (!userDoc.exists()) return;
+    const status = userDoc.data().status;
+    if (status === "approved") {
+      router.replace("/dashboard" as any);
+    } else if (status === "pending") {
+      router.replace("/pending" as any);
+    }
+  });
+  return () => unsub();
+}, []);
 
   useEffect(() => {
     Animated.parallel([

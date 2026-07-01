@@ -1,14 +1,15 @@
 // src/app/dashboard.tsx
-// Replace your existing: snbx-app/src/app/dashboard.tsx
 
 import {
   View, Text, StyleSheet, StatusBar, Pressable,
   ScrollView, ActivityIndicator, RefreshControl,
+  NativeModules, Platform,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import { router } from "expo-router";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { auth } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 import {
   useSubscriber,
   CHESS_ICONS,
@@ -16,6 +17,8 @@ import {
   PLAN_COLORS,
   Subscription,
 } from "../hooks/useSubscriber";
+
+const { SNBXSmsModule } = NativeModules;
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const C = {
@@ -53,7 +56,6 @@ function chessProgress(level: string): number {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
 function ProfileCard({ user, name }: { user: User; name: string }) {
   const initials = name
     ? name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
@@ -80,16 +82,15 @@ function ProfileCard({ user, name }: { user: User; name: string }) {
 }
 
 function SubscriptionCard({ sub }: { sub: Subscription }) {
-  const planColor = PLAN_COLORS[sub.plan] ?? C.forestGreen;
-  const days      = daysUntil(sub.renewalDate);
-  const icon      = CHESS_ICONS[sub.chessLevel] ?? "♟";
-  const progress  = chessProgress(sub.chessLevel);
+  const planColor  = PLAN_COLORS[sub.plan] ?? C.forestGreen;
+  const days       = daysUntil(sub.renewalDate);
+  const icon       = CHESS_ICONS[sub.chessLevel] ?? "♟";
+  const progress   = chessProgress(sub.chessLevel);
   const isExpiring = days <= 7 && days > 0;
   const isExpired  = days === 0;
 
   return (
     <View style={[st.subCard, { borderLeftColor: planColor, borderLeftWidth: 3 }]}>
-      {/* Plan header */}
       <View style={st.subHeader}>
         <View style={[st.planBadge, { backgroundColor: `${planColor}18`, borderColor: `${planColor}50` }]}>
           <Text style={[st.planBadgeText, { color: planColor }]}>{sub.plan} Plan</Text>
@@ -111,7 +112,6 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
         </View>
       </View>
 
-      {/* Chess level */}
       <View style={st.chessRow}>
         <Text style={st.chessIcon}>{icon}</Text>
         <View style={st.chessInfo}>
@@ -121,7 +121,6 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
         <Text style={st.chessPercent}>{progress}%</Text>
       </View>
 
-      {/* Progress bar */}
       <View style={st.progressTrack}>
         <View style={[st.progressFill, { width: `${progress}%` as any, backgroundColor: planColor }]} />
       </View>
@@ -129,7 +128,6 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
         {CHESS_LEVELS.indexOf(sub.chessLevel) + 1} of {CHESS_LEVELS.length} levels
       </Text>
 
-      {/* Renewal */}
       <View style={st.subFooter}>
         <View style={st.subMeta}>
           <Text style={st.subMetaLabel}>Renewal Date</Text>
@@ -164,17 +162,31 @@ function ToolCard({ icon, label, desc, onPress }: {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function DashboardScreen() {
-  const [user, setUser]         = useState<User | null>(null);
-  const [authReady, setAuthReady] = useState(false);
+  const [user, setUser]             = useState<User | null>(null);
+  const [authReady, setAuthReady]   = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // ── Auth listener + gateway auto-restart ──────────────────────────────────
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) { router.replace("/login"); return; }
       setUser(u);
       setAuthReady(true);
+
+      // Auto-restart gateway if it was previously active
+      if (Platform.OS === "android" && SNBXSmsModule) {
+        try {
+          const gatewayRef  = doc(db, "gateway_status", u.uid);
+          const gatewaySnap = await getDoc(gatewayRef);
+          if (gatewaySnap.exists() && gatewaySnap.data().isActive) {
+            SNBXSmsModule.startGatewayService().catch(console.error);
+          }
+        } catch (e) {
+          console.log("Gateway auto-restart error:", e);
+        }
+      }
     });
-    return unsub;
+    return () => unsub();
   }, []);
 
   const { profile, subscriptions, loading, error, refetch } = useSubscriber(
@@ -201,8 +213,7 @@ export default function DashboardScreen() {
     );
   }
 
-  const activeSubs = subscriptions.filter((s) => s.status === "active");
-  const displayName = profile?.name ?? user?.email?.split("@")[0] ?? "Subscriber";
+  const activeSubs  = subscriptions.filter((s) => s.status === "active");
 
   return (
     <View style={st.root}>
@@ -220,10 +231,10 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* ── Profile ── */}
+        {/* Profile */}
         {user && <ProfileCard user={user} name={profile?.name ?? ""} />}
 
-        {/* ── Error ── */}
+        {/* Error */}
         {error && (
           <View style={st.errorBox}>
             <Text style={st.errorText}>{error}</Text>
@@ -231,7 +242,7 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* ── Subscriptions ── */}
+        {/* Subscriptions */}
         <Text style={st.sectionLabel}>
           {activeSubs.length > 1 ? "Your Plans" : "Your Plan"}
         </Text>
@@ -247,7 +258,7 @@ export default function DashboardScreen() {
           <SubscriptionCard key={sub.id} sub={sub} />
         ))}
 
-        {/* ── Tools ── */}
+        {/* Tools */}
         <Text style={[st.sectionLabel, { marginTop: 24 }]}>Your Tools</Text>
 
         <ToolCard
@@ -276,23 +287,24 @@ export default function DashboardScreen() {
           onPress={() => console.log("Chess — coming soon")}
         />
 
-        {/* ── Coming soon ── */}
+        {/* Coming soon */}
         <View style={st.comingSoon}>
           <Text style={st.comingSoonText}>
             🚧 Pull down to refresh · More widgets coming soon
           </Text>
         </View>
 
+        {/* Admin Panel — only visible to admin */}
         {profile?.isAdmin && (
-  <Pressable
-    style={({ pressed }) => [st.adminBtn, pressed && { opacity: 0.7 }]}
-    onPress={() => router.push("/admin" as any)}
-  >
-    <Text style={st.adminBtnText}>⚙️ Admin Panel</Text>
-  </Pressable>
-)}
+          <Pressable
+            style={({ pressed }) => [st.adminBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => router.push("/admin" as any)}
+          >
+            <Text style={st.adminBtnText}>⚙️ Admin Panel</Text>
+          </Pressable>
+        )}
 
-        {/* ── Logout ── */}
+        {/* Logout */}
         <Pressable
           style={({ pressed }) => [st.logout, pressed && st.logoutPressed]}
           onPress={handleLogout}
@@ -311,11 +323,9 @@ const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.navy },
   scroll: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 48 },
 
-  // Loading
   loadingRoot: { flex: 1, backgroundColor: C.navy, alignItems: "center", justifyContent: "center", gap: 14 },
   loadingText: { fontSize: 14, color: C.muted },
 
-  // Profile card
   profileCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
     backgroundColor: C.navyCard, borderWidth: 0.5,
@@ -342,7 +352,6 @@ const st = StyleSheet.create({
   },
   logoMarkText: { fontSize: 16, fontWeight: "800", color: C.white },
 
-  // Error
   errorBox: {
     backgroundColor: "rgba(224,90,90,0.08)", borderWidth: 0.5,
     borderColor: "rgba(224,90,90,0.3)", borderRadius: 12,
@@ -352,13 +361,11 @@ const st = StyleSheet.create({
   errorText: { fontSize: 13, color: C.error, flex: 1 },
   errorRetry: { fontSize: 13, color: C.forestGreen, fontWeight: "600", marginLeft: 12 },
 
-  // Section label
   sectionLabel: {
     fontSize: 12, fontWeight: "600", color: C.muted,
     letterSpacing: 1, textTransform: "uppercase", marginBottom: 12,
   },
 
-  // Empty state
   emptyBox: {
     backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
     borderRadius: 16, padding: 28, alignItems: "center", marginBottom: 12,
@@ -366,25 +373,17 @@ const st = StyleSheet.create({
   emptyIcon: { fontSize: 32, marginBottom: 10 },
   emptyText: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },
 
-  // Subscription card
   subCard: {
     backgroundColor: C.navyCard, borderWidth: 0.5,
     borderColor: C.border, borderRadius: 16,
     padding: 16, marginBottom: 12,
   },
   subHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  planBadge: {
-    paddingHorizontal: 12, paddingVertical: 5,
-    borderRadius: 20, borderWidth: 0.5,
-  },
+  planBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 0.5 },
   planBadgeText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
-  statusBadge: {
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 20, borderWidth: 0.5,
-  },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 0.5 },
   statusText: { fontSize: 12, fontWeight: "600" },
 
-  // Chess level
   chessRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
   chessIcon: { fontSize: 28 },
   chessInfo: { flex: 1 },
@@ -392,7 +391,6 @@ const st = StyleSheet.create({
   chessSub: { fontSize: 11, color: C.muted, marginTop: 1 },
   chessPercent: { fontSize: 14, fontWeight: "600", color: C.muted },
 
-  // Progress bar
   progressTrack: {
     height: 4, backgroundColor: C.border,
     borderRadius: 2, marginBottom: 6, overflow: "hidden",
@@ -400,13 +398,11 @@ const st = StyleSheet.create({
   progressFill: { height: "100%", borderRadius: 2 },
   progressLabel: { fontSize: 11, color: C.muted, marginBottom: 14 },
 
-  // Sub footer
   subFooter: { flexDirection: "row", gap: 16, paddingTop: 12, borderTopWidth: 0.5, borderTopColor: C.border },
   subMeta: { flex: 1 },
   subMetaLabel: { fontSize: 11, color: C.muted, marginBottom: 3 },
   subMetaValue: { fontSize: 13, color: C.offWhite, fontWeight: "500" },
 
-  // Tool cards
   toolCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
     backgroundColor: C.navyCard, borderWidth: 0.5,
@@ -420,7 +416,6 @@ const st = StyleSheet.create({
   toolDesc: { fontSize: 12, color: C.muted },
   toolArrow: { fontSize: 20, color: C.muted },
 
-  // Coming soon
   comingSoon: {
     backgroundColor: "rgba(29,158,117,0.05)", borderWidth: 0.5,
     borderColor: C.border, borderRadius: 12,
@@ -428,7 +423,14 @@ const st = StyleSheet.create({
   },
   comingSoonText: { fontSize: 12, color: C.muted, textAlign: "center" },
 
-  // Logout
+  adminBtn: {
+    backgroundColor: "rgba(201,168,76,0.1)",
+    borderWidth: 0.5, borderColor: C.gold,
+    borderRadius: 14, paddingVertical: 14,
+    alignItems: "center", marginBottom: 12,
+  },
+  adminBtnText: { fontSize: 15, fontWeight: "600", color: C.gold },
+
   logout: {
     borderWidth: 0.5, borderColor: C.border,
     borderRadius: 14, paddingVertical: 14,
@@ -437,12 +439,4 @@ const st = StyleSheet.create({
   logoutPressed: { opacity: 0.6 },
   logoutText: { fontSize: 15, fontWeight: "600", color: C.muted },
   domain: { fontSize: 12, color: C.muted, textAlign: "center", letterSpacing: 1.2 },
-
-  adminBtn: {
-  backgroundColor: "rgba(201,168,76,0.1)",
-  borderWidth: 0.5, borderColor: C.gold,
-  borderRadius: 14, paddingVertical: 14,
-  alignItems: "center", marginBottom: 12,
-},
-adminBtnText: { fontSize: 15, fontWeight: "600", color: C.gold },
 });
