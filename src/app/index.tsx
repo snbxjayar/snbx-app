@@ -106,6 +106,13 @@ export default function HomeScreen() {
             <Text style={s.ctaText}>Enter SNBX</Text>
           </Pressable>
 
+          <Pressable onPress={() => router.push("/signup" as any)}>
+  <Text style={{ color: C.muted, fontSize: 13, textAlign: "center" }}>
+    New here?{" "}
+    <Text style={{ color: C.forestGreen, fontWeight: "600" }}>Create Account</Text>
+  </Text>
+</Pressable>
+
           {/* Website */}
           <Text style={s.footer}>snbxpro.com</Text>
 

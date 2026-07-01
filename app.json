@@ -35,17 +35,18 @@
       "favicon": "./assets/images/snbx-logo.png"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#FFFFFF",
-          "android": {
-            "image": "./assets/images/snbx-logo.png",
-            "imageWidth": 76
-          }
-        }
-      ]
+  "expo-router",
+  [
+    "expo-splash-screen",
+    {
+      "backgroundColor": "#FFFFFF",
+      "android": {
+        "image": "./assets/images/snbx-logo.png",
+        "imageWidth": 76
+      }
+    }
+  ],
+  "./plugins/withSmsGateway"
     ],
     "experiments": {
       "typedRoutes": true,

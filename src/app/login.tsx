@@ -10,6 +10,8 @@ import { useEffect, useRef, useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 import { router } from "expo-router";
+import { getDoc, doc } from "firebase/firestore";
+import { db } from "../firebase";
 
 const { width } = Dimensions.get("window");
 
@@ -60,8 +62,17 @@ export default function LoginScreen() {
     setError("");
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace("/dashboard");
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      // Check status after login
+const userDoc = await getDoc(doc(db, "users", cred.user.uid));
+const status = userDoc.exists() ? userDoc.data().status : "pending";
+if (status === "approved") {
+  router.replace("/dashboard" as any);
+} else if (status === "rejected") {
+  router.replace("/rejected" as any);
+} else {
+  router.replace("/pending" as any);
+}
     } catch (e: any) {
       const msg = e.code === "auth/invalid-credential"
         ? "Invalid email or password."
@@ -144,6 +155,13 @@ export default function LoginScreen() {
               : <Text style={s.ctaText}>Sign In</Text>
             }
           </Pressable>
+
+          <Pressable onPress={() => router.push("/signup" as any)}>
+  <Text style={{ color: C.muted, fontSize: 13, textAlign: "center", marginTop: -8, marginBottom: 16 }}>
+    New here?{" "}
+    <Text style={{ color: C.forestGreen, fontWeight: "600" }}>Create Account</Text>
+  </Text>
+</Pressable>
 
           {/* Footer note */}
           <Text style={s.footerNote}>

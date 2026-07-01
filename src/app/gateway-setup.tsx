@@ -127,11 +127,19 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
     if (!uid) return;
 
     // Start or stop the native Android service
+    console.log("Starting gateway service...");
+
     if (Platform.OS === "android" && SNBXSmsModule) {
+          console.log("SNBXSmsModule found, calling startGatewayService");
+
       if (val) {
         await SNBXSmsModule.startGatewayService();
+          console.log("startGatewayService called successfully");
+
       } else {
         await SNBXSmsModule.stopGatewayService();
+          console.log("SNBXSmsModule NOT found:", SNBXSmsModule);
+
       }
     }
 
@@ -209,6 +217,9 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Status card */}
+        <Text style={{ color: "yellow", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
+  Module: {SNBXSmsModule ? "✓ Loaded" : "✗ Not found"}
+</Text>
         <View style={[s.statusCard, gatewayOn && s.statusCardActive]}>
           <View style={s.statusLeft}>
             <View style={[s.statusDot, gatewayOn ? s.statusDotActive : s.statusDotInactive]} />

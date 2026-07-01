@@ -258,7 +258,7 @@ export default function DashboardScreen() {
         <ToolCard
           icon="💳" label="Payments"
           desc="GCash · Maya · Card"
-          onPress={() => console.log("Payments — Phase 5")}
+          onPress={() => router.push("/payments" as any)}
         />
         <ToolCard
           icon="📊" label="GHL Dashboard"
@@ -282,6 +282,15 @@ export default function DashboardScreen() {
             🚧 Pull down to refresh · More widgets coming soon
           </Text>
         </View>
+
+        {profile?.isAdmin && (
+  <Pressable
+    style={({ pressed }) => [st.adminBtn, pressed && { opacity: 0.7 }]}
+    onPress={() => router.push("/admin" as any)}
+  >
+    <Text style={st.adminBtnText}>⚙️ Admin Panel</Text>
+  </Pressable>
+)}
 
         {/* ── Logout ── */}
         <Pressable
@@ -428,4 +437,12 @@ const st = StyleSheet.create({
   logoutPressed: { opacity: 0.6 },
   logoutText: { fontSize: 15, fontWeight: "600", color: C.muted },
   domain: { fontSize: 12, color: C.muted, textAlign: "center", letterSpacing: 1.2 },
+
+  adminBtn: {
+  backgroundColor: "rgba(201,168,76,0.1)",
+  borderWidth: 0.5, borderColor: C.gold,
+  borderRadius: 14, paddingVertical: 14,
+  alignItems: "center", marginBottom: 12,
+},
+adminBtnText: { fontSize: 15, fontWeight: "600", color: C.gold },
 });

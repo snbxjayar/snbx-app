@@ -60,6 +60,13 @@ export const PLAN_COLORS: Record<string, string> = {
   Special:  "#A78BFA",
 };
 
+// ── IMPORTANT DATA MODEL ──────────────────────────────────────────────────
+// users/{firebaseUID}        ← document ID IS the Firebase Auth UID directly
+// subscriptions/{autoId}     ← has a userId field == Firebase Auth UID
+//
+// This makes Firestore security rules simple and fast: no collection scans,
+// just direct document lookups and a single indexed query.
+
 export function useSubscriber(firebaseUID: string | undefined): SubscriberData {
   const [profile, setProfile]             = useState<UserProfile | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -76,40 +83,24 @@ export function useSubscriber(firebaseUID: string | undefined): SubscriberData {
       setLoading(true);
       setError(null);
       try {
-        // 1. Load user profile — query by email match or by doc ID
-        const usersRef = collection(db, "users");
-        const userSnap = await getDocs(usersRef);
+        // 1. Direct document lookup — fast, secure, no collection scan
+        const userRef  = doc(db, "users", firebaseUID);
+        const userSnap = await getDoc(userRef);
 
-        let userDoc: UserProfile | null = null;
-
-        // Try matching by document ID first, then by userId field
-        userSnap.forEach((d) => {
-          if (d.id === firebaseUID || d.data().uid === firebaseUID) {
-            userDoc = { id: d.id, ...d.data() } as UserProfile;
-          }
-        });
-
-        // Fallback: match by email stored in Firestore
-        if (!userDoc) {
-          userSnap.forEach((d) => {
-            const data = d.data();
-            if (data.firebaseUID === firebaseUID) {
-              userDoc = { id: d.id, ...data } as UserProfile;
-            }
-          });
-        }
+        const userDoc: UserProfile | null = userSnap.exists()
+          ? ({ id: userSnap.id, ...userSnap.data() } as UserProfile)
+          : null;
 
         setProfile(userDoc);
 
-        // 2. Load subscriptions for this user
-        if (userDoc) {
-          const subRef   = collection(db, "subscriptions");
-          const subQuery = query(subRef, where("userId", "==", (userDoc as UserProfile).id));
-          const subSnap  = await getDocs(subQuery);
-          const subs: Subscription[] = [];
-          subSnap.forEach((d) => subs.push({ id: d.id, ...d.data() } as Subscription));
-          setSubscriptions(subs);
-        }
+        // 2. Query subscriptions where userId == this Firebase UID
+        const subRef   = collection(db, "subscriptions");
+        const subQuery = query(subRef, where("userId", "==", firebaseUID));
+        const subSnap  = await getDocs(subQuery);
+        const subs: Subscription[] = [];
+        subSnap.forEach((d) => subs.push({ id: d.id, ...d.data() } as Subscription));
+        setSubscriptions(subs);
+
       } catch (e: any) {
         setError("Failed to load your data. Please try again.");
         console.error("Firestore error:", e);
