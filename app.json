@@ -7,9 +7,7 @@
     "icon": "./assets/images/snbx-logo.png",
     "scheme": "snbxapp",
     "userInterfaceStyle": "automatic",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/310a9b65-1c14-432f-af82-535fce414320",
       "fallbackToCacheTimeout": 0,
