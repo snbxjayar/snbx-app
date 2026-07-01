@@ -90,34 +90,29 @@
         android:name=".sms.GatewayService"
         android:enabled="true"
         android:exported="false"
-        android:foregroundServiceType="dataSync"
-        tools:node="replace"/>
+        android:foregroundServiceType="dataSync"/>
 
-    <!-- Incoming SMS Receiver -->
-    <receiver
-        android:name=".sms.SmsReceiver"
-        android:enabled="true"
-        android:exported="true"
-        android:permission="android.permission.BROADCAST_SMS"
-        tools:node="replace">
-      <intent-filter android:priority="999">
+    <!-- SMS + MMS Receiver -->
+<receiver
+    android:name=".sms.SmsReceiver"
+    android:enabled="true"
+    android:exported="true"
+    android:permission="android.permission.BROADCAST_SMS">
+
+    <intent-filter android:priority="999">
         <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
-      </intent-filter>
-      <intent-filter>
-        <action android:name="android.provider.Telephony.SMS_DELIVER"/>
-      </intent-filter>
-    </receiver>
+    </intent-filter>
 
-    <!-- MMS Receiver -->
-    <receiver
-        android:name=".sms.SmsReceiver"
-        android:exported="true"
-        tools:node="replace">
-      <intent-filter>
+    <intent-filter>
+        <action android:name="android.provider.Telephony.SMS_DELIVER"/>
+    </intent-filter>
+
+    <intent-filter>
         <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER"/>
         <data android:mimeType="application/vnd.wap.mms-message"/>
-      </intent-filter>
-    </receiver>
+    </intent-filter>
+
+</receiver>
 
   </application>
 
