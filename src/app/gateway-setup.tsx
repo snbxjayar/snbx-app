@@ -173,6 +173,7 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
 
        if (Platform.OS === "android" && SNBXSmsModule) {
       await SNBXSmsModule.startGatewayService();
+      await SNBXSmsModule.requestBatteryOptimization();
     }
 
       await setDoc(doc(db, "gateway_status", uid), {
@@ -324,6 +325,7 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
             { icon: "3️⃣", text: "Outgoing SMS jobs are sent through your SIM" },
             { icon: "4️⃣", text: "Incoming replies are saved to your inbox" },
             { icon: "5️⃣", text: "No Textbee subscription needed — use your own load" },
+            { icon: "⚡", text: "Go to Settings → Apps → SNBX Pro → Battery → set to Unrestricted (required for 24/7 SMS)" },
           ].map((step) => (
             <View key={step.icon} style={s.howRow}>
               <Text style={s.howIcon}>{step.icon}</Text>

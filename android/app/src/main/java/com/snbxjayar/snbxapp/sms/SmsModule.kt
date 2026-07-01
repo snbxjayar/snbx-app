@@ -186,4 +186,23 @@ class SmsModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun removeListeners(count: Int) {}
+
+    @ReactMethod
+fun requestBatteryOptimization(promise: Promise) {
+    try {
+        val packageName = reactContext.packageName
+        val pm = reactContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+            val intent = Intent().apply {
+                action = android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+                data = android.net.Uri.parse("package:$packageName")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            reactContext.startActivity(intent)
+        }
+        promise.resolve(true)
+    } catch (e: Exception) {
+        promise.reject("BATTERY_ERROR", e.message, e)
+    }
+}
 }
