@@ -13,18 +13,16 @@ import { auth, db } from "../firebase";
 import { router } from "expo-router";
 
 const C = {
-  forestGreen: "#1D9E75",
-  darkGreen:   "#1B3A2D",
-  midGreen:    "#0F6E56",
-  gold:        "#C9A84C",
-  navy:        "#0D1B2A",
-  navyCard:    "#0F2030",
-  white:       "#FFFFFF",
-  offWhite:    "#F0F5F2",
-  muted:       "#7A9E8E",
-  border:      "#1A3A2A",
-  error:       "#E05A5A",
-  inputBg:     "#0F2030",
+  green:      "#1D9E75",
+  greenDark:  "#0F6E56",
+  greenSoft:  "#E6F5EF",
+  ink:        "#0D1B2A",
+  body:       "#3D4F5C",
+  muted:      "#7A8B96",
+  bg:         "#FFFFFF",
+  inputBg:    "#FAFBFC",
+  cardBorder: "#E8ECEF",
+  error:      "#D64545",
 };
 
 export default function SignupScreen() {
@@ -100,8 +98,7 @@ export default function SignupScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.navy} />
-      <View style={s.bgGlow} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       <KeyboardAvoidingView
         style={s.kav}
@@ -185,7 +182,7 @@ export default function SignupScreen() {
               disabled={loading}
             >
               {loading
-                ? <ActivityIndicator color={C.white} />
+                ? <ActivityIndicator color="#FFFFFF" />
                 : <Text style={s.ctaText}>Create Account</Text>
               }
             </Pressable>
@@ -194,7 +191,7 @@ export default function SignupScreen() {
             <Pressable onPress={() => router.push("/login" as any)}>
               <Text style={s.loginLink}>
                 Already have an account?{" "}
-                <Text style={{ color: C.forestGreen, fontWeight: "600" }}>Sign In</Text>
+                <Text style={{ color: C.green, fontWeight: "600" }}>Sign In</Text>
               </Text>
             </Pressable>
 
@@ -208,12 +205,7 @@ export default function SignupScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.navy },
-  bgGlow: {
-    position: "absolute", top: "15%", alignSelf: "center",
-    width: 300, height: 300, borderRadius: 150,
-    backgroundColor: C.darkGreen, opacity: 0.35,
-  },
+  root: { flex: 1, backgroundColor: C.bg },
   kav: { flex: 1 },
   scroll: { paddingHorizontal: 28, paddingTop: 60, paddingBottom: 40 },
   content: { flex: 1 },
@@ -223,37 +215,35 @@ const s = StyleSheet.create({
 
   logoMark: {
     width: 48, height: 48, borderRadius: 14,
-    backgroundColor: C.forestGreen, alignItems: "center",
+    backgroundColor: C.green, alignItems: "center",
     justifyContent: "center", marginBottom: 20,
-    borderWidth: 1, borderColor: C.midGreen,
   },
-  logoMarkText: { fontSize: 24, fontWeight: "800", color: C.white },
+  logoMarkText: { fontSize: 24, fontWeight: "800", color: "#FFFFFF" },
 
-  title: { fontSize: 26, fontWeight: "700", color: C.white, marginBottom: 6 },
+  title: { fontSize: 26, fontWeight: "800", color: C.ink, marginBottom: 6 },
   subtitle: { fontSize: 13, color: C.muted, lineHeight: 20 },
 
   divider: {
-    width: 36, height: 2, backgroundColor: C.forestGreen,
-    borderRadius: 1, marginVertical: 22, opacity: 0.9,
+    width: 36, height: 3, backgroundColor: C.green,
+    borderRadius: 2, marginVertical: 22,
   },
 
-  label: { fontSize: 13, fontWeight: "600", color: C.offWhite, marginBottom: 8, letterSpacing: 0.3 },
+  label: { fontSize: 13, fontWeight: "600", color: C.ink, marginBottom: 8, letterSpacing: 0.3 },
   input: {
-    backgroundColor: C.inputBg, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
-    fontSize: 15, color: C.white, marginBottom: 16,
+    fontSize: 15, color: C.ink, marginBottom: 16,
   },
 
   error: { fontSize: 13, color: C.error, marginBottom: 14, lineHeight: 18 },
 
   cta: {
-    backgroundColor: C.forestGreen, paddingVertical: 16,
-    borderRadius: 14, alignItems: "center", marginBottom: 20,
-    borderWidth: 1, borderColor: C.midGreen,
+    backgroundColor: C.green, paddingVertical: 16,
+    borderRadius: 12, alignItems: "center", marginBottom: 20,
   },
-  ctaPressed: { backgroundColor: C.midGreen },
+  ctaPressed: { backgroundColor: C.greenDark },
   ctaDisabled: { opacity: 0.7 },
-  ctaText: { fontSize: 16, fontWeight: "700", color: C.white, letterSpacing: 0.5 },
+  ctaText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", letterSpacing: 0.5 },
 
   loginLink: { fontSize: 13, color: C.muted, textAlign: "center", marginBottom: 24 },
   domain: { fontSize: 12, color: C.muted, textAlign: "center", letterSpacing: 1.2 },

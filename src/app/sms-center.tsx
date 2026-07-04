@@ -3,31 +3,22 @@
 
 import {
   View, Text, StyleSheet, StatusBar, Pressable,
-  ScrollView, TextInput, KeyboardAvoidingView,
+  TextInput, KeyboardAvoidingView,
   Platform, ActivityIndicator, FlatList,
 } from "react-native";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   collection, query, orderBy, onSnapshot,
   addDoc, serverTimestamp, where,
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { router } from "expo-router";
+import * as Application from "expo-application";
+import { C } from "../theme";
 
-const C = {
-  forestGreen: "#1D9E75",
-  darkGreen:   "#1B3A2D",
-  midGreen:    "#0F6E56",
-  navy:        "#0D1B2A",
-  navyCard:    "#0F2030",
-  navyDeep:    "#091624",
-  white:       "#FFFFFF",
-  offWhite:    "#F0F5F2",
-  muted:       "#7A9E8E",
-  border:      "#1A3A2A",
-  error:       "#E05A5A",
-  sent:        "#1D9E75",
-  received:    "#1A3A4A",
+const EXTRA = {
+  sent:     "#1D9E75",
+  received: "#5B7A99",
 };
 
 type SmsJob = {
@@ -38,13 +29,6 @@ type SmsJob = {
   status: string;
   createdAt: any;
   source: "gateway" | "outgoing";
-};
-
-type Conversation = {
-  phone: string;
-  lastMessage: string;
-  lastTime: any;
-  unread: number;
 };
 
 function formatTime(ts: any): string {
@@ -64,8 +48,8 @@ function formatTime(ts: any): string {
 
 function statusColor(status: string): string {
   switch (status) {
-    case "sent":      return C.forestGreen;
-    case "delivered": return C.forestGreen;
+    case "sent":      return C.greenDark;
+    case "delivered": return C.greenDark;
     case "failed":    return C.error;
     case "queued":    return C.muted;
     default:          return C.muted;
@@ -98,10 +82,15 @@ function ComposeSheet({ onClose, onSent }: { onClose: () => void; onSent: () => 
     setSending(true);
     setError("");
     try {
+      // Stamp this device's ID so the gateway's filtered listener picks it up
+      const deviceId =
+        Platform.OS === "android" ? Application.getAndroidId() : null;
+
       // Write to sms_jobs — GatewayService picks this up and sends via SIM
       await addDoc(collection(db, "sms_jobs"), {
         to:        phone.trim(),
         body:      message.trim(),
+        deviceId:  deviceId ?? "",
         status:    "queued",
         createdAt: serverTimestamp(),
         userId:    auth.currentUser?.uid ?? "",
@@ -153,7 +142,7 @@ function ComposeSheet({ onClose, onSent }: { onClose: () => void; onSent: () => 
         disabled={sending}
       >
         {sending
-          ? <ActivityIndicator color={C.white} size="small" />
+          ? <ActivityIndicator color="#FFFFFF" size="small" />
           : <Text style={cs.sendBtnText}>Send via Gateway</Text>
         }
       </Pressable>
@@ -210,7 +199,7 @@ export default function SmsCenterScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.navy} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       {/* Header */}
       <View style={s.header}>
@@ -241,7 +230,7 @@ export default function SmsCenterScreen() {
       {/* Messages */}
       {loading ? (
         <View style={s.center}>
-          <ActivityIndicator color={C.forestGreen} size="large" />
+          <ActivityIndicator color={C.green} size="large" />
         </View>
       ) : messages.length === 0 ? (
         <View style={s.center}>
@@ -261,8 +250,8 @@ export default function SmsCenterScreen() {
           renderItem={({ item }) => (
             <View style={[
               s.msgCard,
-              item.source === "gateway" && { borderLeftColor: C.received, borderLeftWidth: 3 },
-              item.source === "outgoing" && { borderLeftColor: C.sent, borderLeftWidth: 3 },
+              item.source === "gateway" && { borderLeftColor: EXTRA.received, borderLeftWidth: 3 },
+              item.source === "outgoing" && { borderLeftColor: EXTRA.sent, borderLeftWidth: 3 },
             ]}>
               <View style={s.msgHeader}>
                 <View style={s.msgMeta}>
@@ -307,21 +296,21 @@ export default function SmsCenterScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.navy },
+  root: { flex: 1, backgroundColor: C.bg },
   header: {
     flexDirection: "row", alignItems: "center",
     justifyContent: "space-between", paddingHorizontal: 20,
     paddingTop: 56, paddingBottom: 16,
-    borderBottomWidth: 0.5, borderBottomColor: C.border,
+    borderBottomWidth: 1, borderBottomColor: C.cardBorder,
   },
   back: { padding: 4 },
   backText: { fontSize: 22, color: C.muted },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: C.white },
+  headerTitle: { fontSize: 17, fontWeight: "800", color: C.ink },
   composeBtn: {
-    backgroundColor: C.forestGreen, paddingHorizontal: 14,
+    backgroundColor: C.green, paddingHorizontal: 14,
     paddingVertical: 7, borderRadius: 20,
   },
-  composeBtnText: { fontSize: 13, fontWeight: "700", color: C.white },
+  composeBtnText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
 
   // Tabs
   tabs: {
@@ -330,12 +319,12 @@ const s = StyleSheet.create({
   },
   tab: {
     flex: 1, paddingVertical: 8, borderRadius: 20,
-    alignItems: "center", backgroundColor: C.navyCard,
-    borderWidth: 0.5, borderColor: C.border,
+    alignItems: "center", backgroundColor: C.cardBg,
+    borderWidth: 1, borderColor: C.cardBorder,
   },
-  tabActive: { backgroundColor: C.forestGreen, borderColor: C.forestGreen },
+  tabActive: { backgroundColor: C.green, borderColor: C.green },
   tabText: { fontSize: 13, fontWeight: "600", color: C.muted },
-  tabTextActive: { color: C.white },
+  tabTextActive: { color: "#FFFFFF" },
 
   // List
   list: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32 },
@@ -345,51 +334,51 @@ const s = StyleSheet.create({
 
   // Message card
   msgCard: {
-    backgroundColor: C.navyCard, borderWidth: 0.5,
-    borderColor: C.border, borderRadius: 14,
+    backgroundColor: C.cardBg, borderWidth: 1,
+    borderColor: C.cardBorder, borderRadius: 14,
     padding: 14, marginBottom: 10,
   },
   msgHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   msgMeta: { flex: 1 },
   msgDirection: { fontSize: 11, color: C.muted, marginBottom: 2 },
-  msgPhone: { fontSize: 14, fontWeight: "600", color: C.white },
+  msgPhone: { fontSize: 14, fontWeight: "700", color: C.ink },
   msgRight: { alignItems: "flex-end" },
   msgStatus: { fontSize: 11, fontWeight: "600", marginBottom: 2 },
   msgTime: { fontSize: 11, color: C.muted },
-  msgBody: { fontSize: 14, color: C.offWhite, lineHeight: 20 },
+  msgBody: { fontSize: 14, color: C.body, lineHeight: 20 },
 
   // Overlay
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: "flex-end", zIndex: 100 },
-  overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
+  overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(13,27,42,0.45)" },
 });
 
 const cs = StyleSheet.create({
   sheet: {
-    backgroundColor: C.navyCard, borderTopLeftRadius: 24,
+    backgroundColor: C.bg, borderTopLeftRadius: 24,
     borderTopRightRadius: 24, padding: 24, paddingBottom: 40,
-    borderWidth: 0.5, borderColor: C.border,
+    borderWidth: 1, borderColor: C.cardBorder,
   },
   sheetHandle: {
-    width: 40, height: 4, backgroundColor: C.border,
+    width: 40, height: 4, backgroundColor: C.cardBorder,
     borderRadius: 2, alignSelf: "center", marginBottom: 20,
   },
-  sheetTitle: { fontSize: 18, fontWeight: "700", color: C.white, marginBottom: 20 },
-  label: { fontSize: 13, fontWeight: "600", color: C.offWhite, marginBottom: 8 },
+  sheetTitle: { fontSize: 18, fontWeight: "800", color: C.ink, marginBottom: 20 },
+  label: { fontSize: 13, fontWeight: "600", color: C.ink, marginBottom: 8 },
   input: {
-    backgroundColor: C.navy, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13,
-    fontSize: 15, color: C.white, marginBottom: 16,
+    fontSize: 15, color: C.ink, marginBottom: 16,
   },
   messageInput: { height: 100, textAlignVertical: "top" },
   charCount: { fontSize: 11, color: C.muted, textAlign: "right", marginTop: -10, marginBottom: 16 },
   error: { fontSize: 13, color: C.error, marginBottom: 12 },
   sendBtn: {
-    backgroundColor: C.forestGreen, paddingVertical: 16,
+    backgroundColor: C.green, paddingVertical: 16,
     borderRadius: 14, alignItems: "center", marginBottom: 10,
   },
-  sendBtnPressed: { backgroundColor: C.midGreen },
+  sendBtnPressed: { backgroundColor: C.greenDark },
   sendBtnDisabled: { opacity: 0.7 },
-  sendBtnText: { fontSize: 16, fontWeight: "700", color: C.white },
+  sendBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
   cancelBtn: { alignItems: "center", paddingVertical: 12 },
   cancelText: { fontSize: 15, color: C.muted, fontWeight: "500" },
 });

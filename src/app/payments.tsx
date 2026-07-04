@@ -9,20 +9,7 @@ import { useState } from "react";
 import { auth } from "../firebase";
 import { router } from "expo-router";
 import { usePayments, PLAN_PRICES, PLAN_FEATURES, PaymentRecord } from "../hooks/usePayments";
-
-const C = {
-  forestGreen: "#1D9E75",
-  darkGreen:   "#1B3A2D",
-  midGreen:    "#0F6E56",
-  gold:        "#C9A84C",
-  navy:        "#0D1B2A",
-  navyCard:    "#0F2030",
-  white:       "#FFFFFF",
-  offWhite:    "#F0F5F2",
-  muted:       "#7A9E8E",
-  border:      "#1A3A2A",
-  error:       "#E05A5A",
-};
+import { C } from "../theme";
 
 const PAYMENT_API_URL = "https://snbx-pay.vercel.app/api/create-checkout";
 
@@ -40,7 +27,7 @@ function formatDate(ts: any): string {
 
 function statusColor(status: string): string {
   switch (status) {
-    case "paid":    return C.forestGreen;
+    case "paid":    return C.greenDark;
     case "pending": return C.gold;
     case "failed":  return C.error;
     case "expired": return C.muted;
@@ -127,7 +114,7 @@ function PaymentMethodSheet({
           <Text style={ps.methodIcon}>{m.icon}</Text>
           <Text style={ps.methodLabel}>{m.label}</Text>
           {processing
-            ? <ActivityIndicator color={C.forestGreen} size="small" />
+            ? <ActivityIndicator color={C.green} size="small" />
             : <Text style={ps.methodArrow}>›</Text>
           }
         </Pressable>
@@ -198,7 +185,7 @@ export default function PaymentsScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.navy} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       {/* Header */}
       <View style={s.header}>
@@ -285,7 +272,7 @@ export default function PaymentsScreen() {
           <>
             {loading ? (
               <View style={s.center}>
-                <ActivityIndicator color={C.forestGreen} size="large" />
+                <ActivityIndicator color={C.green} size="large" />
               </View>
             ) : payments.length === 0 ? (
               <View style={s.center}>
@@ -332,27 +319,27 @@ export default function PaymentsScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.navy },
+  root: { flex: 1, backgroundColor: C.bg },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
-    borderBottomWidth: 0.5, borderBottomColor: C.border,
+    borderBottomWidth: 1, borderBottomColor: C.cardBorder,
   },
   back: { padding: 4 },
   backText: { fontSize: 22, color: C.muted },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: C.white },
+  headerTitle: { fontSize: 17, fontWeight: "800", color: C.ink },
 
   tabs: { flexDirection: "row", paddingHorizontal: 20, paddingVertical: 12, gap: 8 },
   tab: {
     flex: 1, paddingVertical: 8, borderRadius: 20, alignItems: "center",
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
   },
-  tabActive: { backgroundColor: C.forestGreen, borderColor: C.forestGreen },
+  tabActive: { backgroundColor: C.green, borderColor: C.green },
   tabText: { fontSize: 12, fontWeight: "600", color: C.muted },
-  tabTextActive: { color: C.white },
+  tabTextActive: { color: "#FFFFFF" },
 
   scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 48 },
-  sectionIntro: { fontSize: 13, color: C.muted, lineHeight: 20, marginBottom: 18 },
+  sectionIntro: { fontSize: 13, color: C.body, lineHeight: 20, marginBottom: 18 },
 
   center: { alignItems: "center", justifyContent: "center", padding: 48 },
   emptyIcon: { fontSize: 36, marginBottom: 12 },
@@ -360,89 +347,89 @@ const s = StyleSheet.create({
 
   // Plan card
   planCard: {
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 18, padding: 20, marginBottom: 14, position: "relative",
   },
-  planCardCurrent: { borderColor: C.forestGreen, borderWidth: 1 },
+  planCardCurrent: { borderColor: C.green, borderWidth: 1.5 },
   currentBadge: {
     position: "absolute", top: -10, right: 16,
-    backgroundColor: C.forestGreen, paddingHorizontal: 10,
+    backgroundColor: C.green, paddingHorizontal: 10,
     paddingVertical: 4, borderRadius: 10,
   },
-  currentBadgeText: { fontSize: 10, fontWeight: "700", color: C.white, letterSpacing: 0.5 },
-  planName: { fontSize: 18, fontWeight: "700", color: C.white, marginBottom: 6 },
+  currentBadgeText: { fontSize: 10, fontWeight: "700", color: "#FFFFFF", letterSpacing: 0.5 },
+  planName: { fontSize: 18, fontWeight: "800", color: C.ink, marginBottom: 6 },
   priceRow: { flexDirection: "row", alignItems: "baseline", marginBottom: 16 },
-  priceValue: { fontSize: 28, fontWeight: "800", color: C.forestGreen },
+  priceValue: { fontSize: 28, fontWeight: "800", color: C.green },
   priceUnit: { fontSize: 13, color: C.muted, marginLeft: 4 },
   featureList: { marginBottom: 18 },
   featureRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  featureCheck: { fontSize: 13, color: C.forestGreen, fontWeight: "700" },
-  featureText: { fontSize: 13, color: C.offWhite, flex: 1 },
+  featureCheck: { fontSize: 13, color: C.green, fontWeight: "700" },
+  featureText: { fontSize: 13, color: C.body, flex: 1 },
   planBtn: {
-    backgroundColor: C.forestGreen, paddingVertical: 13,
+    backgroundColor: C.green, paddingVertical: 13,
     borderRadius: 12, alignItems: "center",
   },
-  planBtnPressed: { backgroundColor: C.midGreen },
-  planBtnDisabled: { backgroundColor: C.border },
-  planBtnText: { fontSize: 14, fontWeight: "700", color: C.white },
+  planBtnPressed: { backgroundColor: C.greenDark },
+  planBtnDisabled: { backgroundColor: C.cardBorder },
+  planBtnText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF" },
   planBtnTextDisabled: { color: C.muted },
 
   // Info box
   infoBox: {
-    flexDirection: "row", gap: 12, backgroundColor: "rgba(29,158,117,0.07)",
-    borderWidth: 0.5, borderColor: C.border, borderRadius: 14,
+    flexDirection: "row", gap: 12, backgroundColor: C.greenSoft,
+    borderWidth: 1, borderColor: "#CBEADF", borderRadius: 14,
     padding: 16, marginBottom: 8,
   },
   infoIcon: { fontSize: 22 },
-  infoText: { fontSize: 13, color: C.offWhite, flex: 1, lineHeight: 20 },
+  infoText: { fontSize: 13, color: C.body, flex: 1, lineHeight: 20 },
 
   // Load card
   loadCard: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 14, padding: 18, marginBottom: 10,
   },
   loadCardPressed: { opacity: 0.75 },
-  loadAmount: { fontSize: 20, fontWeight: "700", color: C.white, marginBottom: 2 },
+  loadAmount: { fontSize: 20, fontWeight: "800", color: C.ink, marginBottom: 2 },
   loadLabel: { fontSize: 12, color: C.muted },
   loadArrow: { fontSize: 22, color: C.muted },
 
   // History card
   historyCard: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 14, padding: 16, marginBottom: 10,
   },
   historyLeft: { flex: 1 },
-  historyDesc: { fontSize: 14, fontWeight: "600", color: C.white, marginBottom: 4 },
+  historyDesc: { fontSize: 14, fontWeight: "700", color: C.ink, marginBottom: 4 },
   historyDate: { fontSize: 12, color: C.muted },
   historyRight: { alignItems: "flex-end" },
-  historyAmount: { fontSize: 15, fontWeight: "700", color: C.white, marginBottom: 4 },
+  historyAmount: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 4 },
   historyStatus: { fontSize: 10, fontWeight: "700", letterSpacing: 0.3 },
 
   // Overlay + sheet
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: "flex-end", zIndex: 100 },
-  overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
+  overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(13,27,42,0.45)" },
 });
 
 const ps = StyleSheet.create({
   sheet: {
-    backgroundColor: C.navyCard, borderTopLeftRadius: 24,
+    backgroundColor: C.bg, borderTopLeftRadius: 24,
     borderTopRightRadius: 24, padding: 24, paddingBottom: 40,
-    borderWidth: 0.5, borderColor: C.border,
+    borderWidth: 1, borderColor: C.cardBorder,
   },
-  handle: { width: 40, height: 4, backgroundColor: C.border, borderRadius: 2, alignSelf: "center", marginBottom: 20 },
-  title: { fontSize: 17, fontWeight: "700", color: C.white, textAlign: "center", marginBottom: 6 },
-  amount: { fontSize: 32, fontWeight: "800", color: C.forestGreen, textAlign: "center", marginBottom: 4 },
+  handle: { width: 40, height: 4, backgroundColor: C.cardBorder, borderRadius: 2, alignSelf: "center", marginBottom: 20 },
+  title: { fontSize: 17, fontWeight: "800", color: C.ink, textAlign: "center", marginBottom: 6 },
+  amount: { fontSize: 32, fontWeight: "800", color: C.green, textAlign: "center", marginBottom: 4 },
   desc: { fontSize: 13, color: C.muted, textAlign: "center", marginBottom: 24 },
   methodRow: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: C.navy, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 14, padding: 16, marginBottom: 10,
   },
   methodPressed: { opacity: 0.7 },
   methodIcon: { fontSize: 22 },
-  methodLabel: { fontSize: 15, fontWeight: "600", color: C.white, flex: 1 },
+  methodLabel: { fontSize: 15, fontWeight: "600", color: C.ink, flex: 1 },
   methodArrow: { fontSize: 20, color: C.muted },
   cancel: { alignItems: "center", paddingVertical: 12, marginTop: 6 },
   cancelText: { fontSize: 15, color: C.muted, fontWeight: "500" },

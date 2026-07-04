@@ -10,6 +10,7 @@ import { router } from "expo-router";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { C } from "../theme";
 import {
   useSubscriber,
   CHESS_ICONS,
@@ -19,22 +20,6 @@ import {
 } from "../hooks/useSubscriber";
 
 const { SNBXSmsModule } = NativeModules;
-
-// ── Brand tokens ──────────────────────────────────────────────────────────────
-const C = {
-  forestGreen: "#1D9E75",
-  darkGreen:   "#1B3A2D",
-  midGreen:    "#0F6E56",
-  gold:        "#C9A84C",
-  navy:        "#0D1B2A",
-  navyCard:    "#0F2030",
-  navyDeep:    "#091624",
-  white:       "#FFFFFF",
-  offWhite:    "#F0F5F2",
-  muted:       "#7A9E8E",
-  border:      "#1A3A2A",
-  error:       "#E05A5A",
-};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDate(ts: any): string {
@@ -82,7 +67,7 @@ function ProfileCard({ user, name }: { user: User; name: string }) {
 }
 
 function SubscriptionCard({ sub }: { sub: Subscription }) {
-  const planColor  = PLAN_COLORS[sub.plan] ?? C.forestGreen;
+  const planColor  = PLAN_COLORS[sub.plan] ?? C.green;
   const days       = daysUntil(sub.renewalDate);
   const icon       = CHESS_ICONS[sub.chessLevel] ?? "♟";
   const progress   = chessProgress(sub.chessLevel);
@@ -92,20 +77,20 @@ function SubscriptionCard({ sub }: { sub: Subscription }) {
   return (
     <View style={[st.subCard, { borderLeftColor: planColor, borderLeftWidth: 3 }]}>
       <View style={st.subHeader}>
-        <View style={[st.planBadge, { backgroundColor: `${planColor}18`, borderColor: `${planColor}50` }]}>
+        <View style={[st.planBadge, { backgroundColor: `${planColor}14`, borderColor: `${planColor}55` }]}>
           <Text style={[st.planBadgeText, { color: planColor }]}>{sub.plan} Plan</Text>
         </View>
         <View style={[
           st.statusBadge,
-          isExpired   && { backgroundColor: "rgba(224,90,90,0.1)", borderColor: "rgba(224,90,90,0.4)" },
-          isExpiring  && { backgroundColor: "rgba(201,168,76,0.1)", borderColor: "rgba(201,168,76,0.4)" },
-          !isExpired && !isExpiring && { backgroundColor: "rgba(29,158,117,0.1)", borderColor: "rgba(29,158,117,0.4)" },
+          isExpired   && { backgroundColor: "rgba(214,69,69,0.08)", borderColor: "rgba(214,69,69,0.35)" },
+          isExpiring  && { backgroundColor: "rgba(184,147,58,0.08)", borderColor: "rgba(184,147,58,0.4)" },
+          !isExpired && !isExpiring && { backgroundColor: C.greenSoft, borderColor: "rgba(29,158,117,0.4)" },
         ]}>
           <Text style={[
             st.statusText,
             isExpired  && { color: C.error },
             isExpiring && { color: C.gold },
-            !isExpired && !isExpiring && { color: C.forestGreen },
+            !isExpired && !isExpiring && { color: C.greenDark },
           ]}>
             {isExpired ? "Expired" : isExpiring ? `${days}d left` : "Active"}
           </Text>
@@ -169,7 +154,7 @@ export default function DashboardScreen() {
   // ── Auth listener + gateway auto-restart ──────────────────────────────────
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) { router.replace("/login"); return; }
+      if (!u) { router.replace("/"); return; }
       setUser(u);
       setAuthReady(true);
 
@@ -201,13 +186,13 @@ export default function DashboardScreen() {
 
   const handleLogout = async () => {
     await signOut(auth);
-    router.replace("/");
+    // onAuthStateChanged fires with null and handles the redirect
   };
 
   if (!authReady || loading) {
     return (
       <View style={st.loadingRoot}>
-        <ActivityIndicator color={C.forestGreen} size="large" />
+        <ActivityIndicator color={C.green} size="large" />
         <Text style={st.loadingText}>Loading your workspace…</Text>
       </View>
     );
@@ -217,7 +202,7 @@ export default function DashboardScreen() {
 
   return (
     <View style={st.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.navy} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       <ScrollView
         contentContainerStyle={st.scroll}
@@ -226,8 +211,8 @@ export default function DashboardScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={C.forestGreen}
-            colors={[C.forestGreen]}
+            tintColor={C.green}
+            colors={[C.green]}
           />
         }
       >
@@ -277,10 +262,10 @@ export default function DashboardScreen() {
           onPress={() => router.push("/ghl-hub" as any)}
         />
         <ToolCard
-  icon="📱" label="SMS Gateway"
-  desc="Manage your SIM gateway settings"
-  onPress={() => router.push("/gateway-setup" as any)}
-/>
+          icon="📱" label="SMS Gateway"
+          desc="Manage your SIM gateway settings"
+          onPress={() => router.push("/gateway-setup" as any)}
+        />
         <ToolCard
           icon="🛡️" label="AXA Insurance"
           desc="Policy & documents"
@@ -325,46 +310,45 @@ export default function DashboardScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.navy },
+  root: { flex: 1, backgroundColor: C.bg },
   scroll: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 48 },
 
-  loadingRoot: { flex: 1, backgroundColor: C.navy, alignItems: "center", justifyContent: "center", gap: 14 },
+  loadingRoot: { flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", gap: 14 },
   loadingText: { fontSize: 14, color: C.muted },
 
   profileCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: C.navyCard, borderWidth: 0.5,
-    borderColor: C.border, borderRadius: 16,
+    backgroundColor: C.cardBg, borderWidth: 1,
+    borderColor: C.cardBorder, borderRadius: 16,
     padding: 16, marginBottom: 20,
   },
   avatar: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: C.forestGreen,
+    backgroundColor: C.green,
     alignItems: "center", justifyContent: "center",
-    borderWidth: 1.5, borderColor: C.midGreen,
   },
-  avatarText: { fontSize: 18, fontWeight: "700", color: C.white },
+  avatarText: { fontSize: 18, fontWeight: "700", color: "#FFFFFF" },
   profileInfo: { flex: 1 },
-  profileName: { fontSize: 16, fontWeight: "700", color: C.white, marginBottom: 2 },
+  profileName: { fontSize: 16, fontWeight: "700", color: C.ink, marginBottom: 2 },
   profileEmail: { fontSize: 12, color: C.muted, marginBottom: 6 },
   activeBadge: { flexDirection: "row", alignItems: "center", gap: 5 },
-  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.forestGreen },
-  activeText: { fontSize: 11, color: C.forestGreen, fontWeight: "600" },
+  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.green },
+  activeText: { fontSize: 11, color: C.greenDark, fontWeight: "600" },
   logoMark: {
     width: 36, height: 36, borderRadius: 10,
-    backgroundColor: C.forestGreen, alignItems: "center",
-    justifyContent: "center", borderWidth: 1, borderColor: C.midGreen,
+    backgroundColor: C.green, alignItems: "center",
+    justifyContent: "center",
   },
-  logoMarkText: { fontSize: 16, fontWeight: "800", color: C.white },
+  logoMarkText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
 
   errorBox: {
-    backgroundColor: "rgba(224,90,90,0.08)", borderWidth: 0.5,
-    borderColor: "rgba(224,90,90,0.3)", borderRadius: 12,
+    backgroundColor: "rgba(214,69,69,0.06)", borderWidth: 1,
+    borderColor: "rgba(214,69,69,0.3)", borderRadius: 12,
     padding: 14, marginBottom: 16, flexDirection: "row",
     alignItems: "center", justifyContent: "space-between",
   },
   errorText: { fontSize: 13, color: C.error, flex: 1 },
-  errorRetry: { fontSize: 13, color: C.forestGreen, fontWeight: "600", marginLeft: 12 },
+  errorRetry: { fontSize: 13, color: C.green, fontWeight: "600", marginLeft: 12 },
 
   sectionLabel: {
     fontSize: 12, fontWeight: "600", color: C.muted,
@@ -372,72 +356,72 @@ const st = StyleSheet.create({
   },
 
   emptyBox: {
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 16, padding: 28, alignItems: "center", marginBottom: 12,
   },
   emptyIcon: { fontSize: 32, marginBottom: 10 },
   emptyText: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },
 
   subCard: {
-    backgroundColor: C.navyCard, borderWidth: 0.5,
-    borderColor: C.border, borderRadius: 16,
+    backgroundColor: C.cardBg, borderWidth: 1,
+    borderColor: C.cardBorder, borderRadius: 16,
     padding: 16, marginBottom: 12,
   },
   subHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  planBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 0.5 },
+  planBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
   planBadgeText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 0.5 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
   statusText: { fontSize: 12, fontWeight: "600" },
 
   chessRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
-  chessIcon: { fontSize: 28 },
+  chessIcon: { fontSize: 28, color: C.ink },
   chessInfo: { flex: 1 },
-  chessLevel: { fontSize: 16, fontWeight: "700", color: C.white },
+  chessLevel: { fontSize: 16, fontWeight: "700", color: C.ink },
   chessSub: { fontSize: 11, color: C.muted, marginTop: 1 },
   chessPercent: { fontSize: 14, fontWeight: "600", color: C.muted },
 
   progressTrack: {
-    height: 4, backgroundColor: C.border,
+    height: 4, backgroundColor: C.cardBorder,
     borderRadius: 2, marginBottom: 6, overflow: "hidden",
   },
   progressFill: { height: "100%", borderRadius: 2 },
   progressLabel: { fontSize: 11, color: C.muted, marginBottom: 14 },
 
-  subFooter: { flexDirection: "row", gap: 16, paddingTop: 12, borderTopWidth: 0.5, borderTopColor: C.border },
+  subFooter: { flexDirection: "row", gap: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.cardBorder },
   subMeta: { flex: 1 },
   subMetaLabel: { fontSize: 11, color: C.muted, marginBottom: 3 },
-  subMetaValue: { fontSize: 13, color: C.offWhite, fontWeight: "500" },
+  subMetaValue: { fontSize: 13, color: C.body, fontWeight: "500" },
 
   toolCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: C.navyCard, borderWidth: 0.5,
-    borderColor: C.border, borderRadius: 14,
+    backgroundColor: C.cardBg, borderWidth: 1,
+    borderColor: C.cardBorder, borderRadius: 14,
     padding: 14, marginBottom: 8,
   },
   toolPressed: { opacity: 0.7, transform: [{ scale: 0.99 }] },
   toolIcon: { fontSize: 22 },
   toolBody: { flex: 1 },
-  toolLabel: { fontSize: 14, fontWeight: "600", color: C.white, marginBottom: 2 },
+  toolLabel: { fontSize: 14, fontWeight: "700", color: C.ink, marginBottom: 2 },
   toolDesc: { fontSize: 12, color: C.muted },
   toolArrow: { fontSize: 20, color: C.muted },
 
   comingSoon: {
-    backgroundColor: "rgba(29,158,117,0.05)", borderWidth: 0.5,
-    borderColor: C.border, borderRadius: 12,
+    backgroundColor: C.greenSoft, borderWidth: 1,
+    borderColor: "#CBEADF", borderRadius: 12,
     padding: 14, marginTop: 8, marginBottom: 20,
   },
-  comingSoonText: { fontSize: 12, color: C.muted, textAlign: "center" },
+  comingSoonText: { fontSize: 12, color: C.greenDark, textAlign: "center" },
 
   adminBtn: {
-    backgroundColor: "rgba(201,168,76,0.1)",
-    borderWidth: 0.5, borderColor: C.gold,
+    backgroundColor: C.goldSoft,
+    borderWidth: 1, borderColor: C.gold,
     borderRadius: 14, paddingVertical: 14,
     alignItems: "center", marginBottom: 12,
   },
   adminBtnText: { fontSize: 15, fontWeight: "600", color: C.gold },
 
   logout: {
-    borderWidth: 0.5, borderColor: C.border,
+    borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 14, paddingVertical: 14,
     alignItems: "center", marginBottom: 20,
   },

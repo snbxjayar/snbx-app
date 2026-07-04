@@ -1,299 +1,188 @@
-import { router } from "expo-router";
+// src/app/index.tsx
+// SNBX Pro — Home / Landing screen (matches snbxpro.com branding)
+
 import {
-  View,
-  Text,
-  StyleSheet,
-  StatusBar,
-  Pressable,
-  Animated,
-  Easing,
-  Dimensions,
-  SafeAreaView,
+  View, Text, StyleSheet, StatusBar, Pressable, ScrollView, Image,
 } from "react-native";
-import { useEffect, useRef } from "react";
-
-import { onAuthStateChanged } from "firebase/auth";
-import { getDoc, doc } from "firebase/firestore";
-import { auth, db } from "../firebase";
-
-const { width } = Dimensions.get("window");
+import { router } from "expo-router";
 
 const C = {
-  forestGreen: "#1D9E75",
-  darkGreen:   "#1B3A2D",
-  midGreen:    "#0F6E56",
-  gold:        "#C9A84C",
-  navy:        "#0D1B2A",
-  white:       "#FFFFFF",
-  offWhite:    "#F0F5F2",
-  muted:       "#7A9E8E",
+  green:      "#1D9E75",
+  greenDark:  "#0F6E56",
+  greenSoft:  "#E6F5EF",   // soft green icon circles
+  ink:        "#0D1B2A",   // near-black headline
+  body:       "#3D4F5C",   // body text
+  muted:      "#7A8B96",
+  bg:         "#FFFFFF",
+  cardBg:     "#FAFBFC",
+  cardBorder: "#E8ECEF",
 };
 
+const PILLARS = [
+  {
+    icon: "⚡",
+    title: "Software",
+    desc: "The tools and systems to build, automate, and grow your professional life online.",
+  },
+  {
+    icon: "🛡️",
+    title: "Insurance",
+    desc: "The protection that keeps everything you build safe — for you and your family.",
+  },
+  {
+    icon: "📈",
+    title: "Financial",
+    desc: "The wisdom to turn what you earn into lasting freedom and independence.",
+  },
+];
+
 export default function HomeScreen() {
-  const orbScale   = useRef(new Animated.Value(1)).current;
-  const orbOpacity = useRef(new Animated.Value(0.7)).current;
-  const fadeAnim   = useRef(new Animated.Value(0)).current;
-  const slideAnim  = useRef(new Animated.Value(32)).current;
-
-  useEffect(() => {
-  const unsub = onAuthStateChanged(auth, async (user) => {
-    if (!user) return; // stay on splash
-    const userDoc = await getDoc(doc(db, "users", user.uid));
-    if (!userDoc.exists()) return;
-    const status = userDoc.data().status;
-    if (status === "approved") {
-      router.replace("/dashboard" as any);
-    } else if (status === "pending") {
-      router.replace("/pending" as any);
-    }
-  });
-  return () => unsub();
-}, []);
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1, duration: 900,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0, duration: 900,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(orbScale,   { toValue: 1.14, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(orbOpacity, { toValue: 1.0,  duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ]),
-        Animated.parallel([
-          Animated.timing(orbScale,   { toValue: 1.0,  duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(orbOpacity, { toValue: 0.7,  duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        ]),
-      ])
-    ).start();
-  }, []);
-
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.navy} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
-      {/* Background glow layer */}
-      <View style={s.bgGlow} />
+      {/* Header */}
+      <View style={s.header}>
+        <View style={s.logoBadge}>
+          <Text style={s.logoBadgeText}>S</Text>
+        </View>
+        <Text style={s.logoText}>SNBX Pro</Text>
+      </View>
 
-      {/* Breathing orb — outer ring */}
-      <Animated.View style={[s.orbOuter, { transform: [{ scale: orbScale }], opacity: orbOpacity }]} />
-      {/* Orb — inner core */}
-      <View style={s.orbInner} />
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-      <SafeAreaView style={s.safe}>
-        <Animated.View style={[s.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        {/* Hero */}
+        <Text style={s.headline}>
+          Build your success.{" "}
+          <Text style={s.headlineGreen}>Secure your future.</Text>
+          {" "}Find your people.
+        </Text>
 
-          {/* Logo mark */}
-          <View style={s.logoMark}>
-            <Text style={s.logoMarkText}>S</Text>
-          </View>
+        <Text style={s.lede}>
+          SNBX Pro is built on three things every professional needs — the
+          right <Text style={s.ledeBold}>software</Text>, the right{" "}
+          <Text style={s.ledeBold}>protection</Text>, and the right{" "}
+          <Text style={s.ledeBold}>financial foundation</Text>. Wrapped in a
+          community that helps you bring it all together.
+        </Text>
 
-          {/* Brand */}
-          <Text style={s.brand}>SNBX</Text>
-          <Text style={s.brandPro}>PRO</Text>
+        {/* CTA */}
+        <Pressable
+          style={({ pressed }) => [s.cta, pressed && s.ctaPressed]}
+          onPress={() => router.push("/login")}
+        >
+          <Text style={s.ctaText}>Enter SNBX Pro  →</Text>
+        </Pressable>
+        <Text style={s.ctaSub}>Your pro journey starts here.</Text>
 
-          {/* Divider */}
-          <View style={s.divider} />
-
-          {/* Tagline */}
-          <Text style={s.tagline}>The Sandbox for{"\n"}Filipino Digital Pros ✨</Text>
-
-          {/* Three pillars */}
-          <View style={s.pillars}>
-            {["Software", "Insurance", "Financial"].map((p) => (
-              <View key={p} style={s.pill}>
-                <Text style={s.pillText}>{p}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* CTA button */}
-          <Pressable
-            style={({ pressed }) => [s.cta, pressed && s.ctaPressed]}
-            onPress={() => router.push("/login")}
-          >
-            <Text style={s.ctaText}>Enter SNBX</Text>
+        {/* Create account */}
+        <View style={s.signupRow}>
+          <Text style={s.signupText}>New here? </Text>
+          <Pressable onPress={() => router.push("/signup")}>
+            <Text style={s.signupLink}>Create Account</Text>
           </Pressable>
+        </View>
 
-          <Pressable onPress={() => router.push("/signup" as any)}>
-  <Text style={{ color: C.muted, fontSize: 13, textAlign: "center" }}>
-    New here?{" "}
-    <Text style={{ color: C.forestGreen, fontWeight: "600" }}>Create Account</Text>
-  </Text>
-</Pressable>
+        {/* Section: pillars */}
+        <Text style={s.sectionTitle}>
+          More than a community.{"\n"}A complete pro program.
+        </Text>
+        <Text style={s.sectionSub}>
+          The Sandbox for Filipino Digital Pros ✨
+        </Text>
 
-          {/* Website */}
-          <Text style={s.footer}>snbxpro.com</Text>
+        {PILLARS.map((p) => (
+          <View key={p.title} style={s.card}>
+            <View style={s.cardIconCircle}>
+              <Text style={s.cardIcon}>{p.icon}</Text>
+            </View>
+            <Text style={s.cardTitle}>{p.title}</Text>
+            <Text style={s.cardDesc}>{p.desc}</Text>
+          </View>
+        ))}
 
-        </Animated.View>
-      </SafeAreaView>
+        <Text style={s.domain}>snbxpro.com</Text>
+      </ScrollView>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: C.navy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bgGlow: {
-    position: "absolute",
-    top: "22%",
-    alignSelf: "center",
-    width: 340,
-    height: 340,
-    borderRadius: 170,
-    backgroundColor: C.darkGreen,
-    opacity: 0.4,
-  },
+  root: { flex: 1, backgroundColor: C.bg },
 
-  // Orb
-  orbOuter: {
-    position: "absolute",
-    width: 148,
-    height: 148,
-    borderRadius: 74,
-    backgroundColor: C.forestGreen,
-    opacity: 0.16,
-    top: "21%",
-    alignSelf: "center",
+  // Header
+  header: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 24, paddingTop: 56, paddingBottom: 14,
+    borderBottomWidth: 1, borderBottomColor: C.cardBorder,
+    backgroundColor: C.bg,
   },
-  orbInner: {
-    position: "absolute",
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: C.forestGreen,
-    opacity: 0.55,
-    top: "21%",
-    marginTop: 38,
-    alignSelf: "center",
+  logoBadge: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: C.greenDark, alignItems: "center", justifyContent: "center",
   },
+  logoBadgeText: { color: "#FFFFFF", fontWeight: "800", fontSize: 16 },
+  logoText: { fontSize: 19, fontWeight: "800", color: C.green },
 
-  // Layout
-  safe: { flex: 1, width: "100%" },
-  content: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
-  },
+  scroll: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 48 },
 
-  // Logo mark
-  logoMark: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    backgroundColor: C.forestGreen,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 22,
-    borderWidth: 1,
-    borderColor: C.midGreen,
-  },
-  logoMarkText: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: C.white,
-    letterSpacing: -1,
-  },
-
-  // Brand name
-  brand: {
-    fontSize: 54,
-    fontWeight: "800",
-    color: C.white,
-    letterSpacing: 12,
-  },
-  brandPro: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: C.gold,
-    letterSpacing: 9,
-    marginTop: -2,
-    marginBottom: 4,
-  },
-
-  // Divider
-  divider: {
-    width: 44,
-    height: 2,
-    backgroundColor: C.forestGreen,
-    borderRadius: 1,
-    marginVertical: 22,
-    opacity: 0.9,
-  },
-
-  // Tagline
-  tagline: {
-    fontSize: 16,
-    color: C.offWhite,
+  // Hero
+  headline: {
+    fontSize: 32, lineHeight: 40, fontWeight: "800",
+    color: C.ink, marginBottom: 18,
     textAlign: "center",
-    lineHeight: 27,
-    letterSpacing: 0.2,
-    opacity: 0.85,
-    marginBottom: 30,
   },
-
-  // Pillars
-  pillars: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 44,
-  },
-  pill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 0.5,
-    borderColor: C.forestGreen,
-    backgroundColor: "rgba(29,158,117,0.09)",
-  },
-  pillText: {
-    fontSize: 12,
-    color: C.forestGreen,
-    fontWeight: "600",
-    letterSpacing: 0.3,
-  },
+  headlineGreen: { color: C.green },
+  lede: { fontSize: 15, lineHeight: 24, color: C.body, marginBottom: 26, textAlign: "center" },
+  ledeBold: { fontWeight: "700", color: C.ink },
 
   // CTA
   cta: {
-    backgroundColor: C.forestGreen,
-    paddingVertical: 17,
-    borderRadius: 14,
-    width: width - 64,
-    alignItems: "center",
-    marginBottom: 28,
-    borderWidth: 1,
-    borderColor: C.midGreen,
+    backgroundColor: C.green, borderRadius: 12,
+    paddingVertical: 17, alignItems: "center",
   },
-  ctaPressed: {
-    backgroundColor: C.midGreen,
-    transform: [{ scale: 0.97 }],
-  },
-  ctaText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: C.white,
-    letterSpacing: 0.6,
+  ctaPressed: { backgroundColor: C.greenDark },
+  ctaText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
+  ctaSub: {
+    fontSize: 13, color: C.green, textAlign: "center",
+    marginTop: 10, marginBottom: 8,
   },
 
-  // Footer
-  footer: {
-    fontSize: 12,
-    color: C.muted,
-    letterSpacing: 1.2,
+  // Signup
+  signupRow: {
+    flexDirection: "row", justifyContent: "center",
+    marginBottom: 40, marginTop: 4,
+  },
+  signupText: { fontSize: 14, color: C.muted },
+  signupLink: { fontSize: 14, color: C.green, fontWeight: "700" },
+
+  // Section
+  sectionTitle: {
+    fontSize: 22, lineHeight: 30, fontWeight: "800",
+    color: C.ink, textAlign: "center", marginBottom: 8,
+  },
+  sectionSub: {
+    fontSize: 14, color: C.muted, textAlign: "center", marginBottom: 22,
+  },
+
+  // Pillar cards
+  card: {
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
+    borderRadius: 16, padding: 22, alignItems: "center", marginBottom: 14,
+  },
+  cardIconCircle: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: C.greenSoft, alignItems: "center", justifyContent: "center",
+    marginBottom: 12,
+  },
+  cardIcon: { fontSize: 24 },
+  cardTitle: { fontSize: 18, fontWeight: "800", color: C.ink, marginBottom: 6 },
+  cardDesc: {
+    fontSize: 14, lineHeight: 22, color: C.body, textAlign: "center",
+  },
+
+  domain: {
+    fontSize: 12, color: C.muted, textAlign: "center",
+    letterSpacing: 1.2, marginTop: 16,
   },
 });

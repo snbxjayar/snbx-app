@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 
 export type PaymentRecord = {
   id: string;
@@ -50,6 +50,11 @@ export function usePayments(userId: string | undefined) {
       setPayments(records);
       setLoading(false);
     }, (err) => {
+      // Sign-out mid-listen throws permission-denied — expected race, ignore quietly
+      if (err.code === "permission-denied" && !auth.currentUser) {
+        console.log("usePayments: listener ended by sign-out (ignored)");
+        return;
+      }
       console.error("Payments listener error:", err);
       setLoading(false);
     });

@@ -16,18 +16,16 @@ import { db } from "../firebase";
 const { width } = Dimensions.get("window");
 
 const C = {
-  forestGreen: "#1D9E75",
-  darkGreen:   "#1B3A2D",
-  midGreen:    "#0F6E56",
-  gold:        "#C9A84C",
-  navy:        "#0D1B2A",
-  navyLight:   "#112236",
-  white:       "#FFFFFF",
-  offWhite:    "#F0F5F2",
-  muted:       "#7A9E8E",
-  error:       "#E05A5A",
-  inputBg:     "#0F2030",
-  border:      "#1A3A2A",
+  green:      "#1D9E75",
+  greenDark:  "#0F6E56",
+  greenSoft:  "#E6F5EF",
+  ink:        "#0D1B2A",
+  body:       "#3D4F5C",
+  muted:      "#7A8B96",
+  bg:         "#FFFFFF",
+  inputBg:    "#FAFBFC",
+  cardBorder: "#E8ECEF",
+  error:      "#D64545",
 };
 
 export default function LoginScreen() {
@@ -64,15 +62,15 @@ export default function LoginScreen() {
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       // Check status after login
-const userDoc = await getDoc(doc(db, "users", cred.user.uid));
-const status = userDoc.exists() ? userDoc.data().status : "pending";
-if (status === "approved") {
-  router.replace("/dashboard" as any);
-} else if (status === "rejected") {
-  router.replace("/rejected" as any);
-} else {
-  router.replace("/pending" as any);
-}
+      const userDoc = await getDoc(doc(db, "users", cred.user.uid));
+      const status = userDoc.exists() ? userDoc.data().status : "pending";
+      if (status === "approved") {
+        router.replace("/dashboard" as any);
+      } else if (status === "rejected") {
+        router.replace("/rejected" as any);
+      } else {
+        router.replace("/pending" as any);
+      }
     } catch (e: any) {
       const msg = e.code === "auth/invalid-credential"
         ? "Invalid email or password."
@@ -91,8 +89,7 @@ if (status === "approved") {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.navy} />
-      <View style={s.bgGlow} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       <KeyboardAvoidingView
         style={s.kav}
@@ -151,17 +148,17 @@ if (status === "approved") {
             disabled={loading}
           >
             {loading
-              ? <ActivityIndicator color={C.white} />
+              ? <ActivityIndicator color="#FFFFFF" />
               : <Text style={s.ctaText}>Sign In</Text>
             }
           </Pressable>
 
           <Pressable onPress={() => router.push("/signup" as any)}>
-  <Text style={{ color: C.muted, fontSize: 13, textAlign: "center", marginTop: -8, marginBottom: 16 }}>
-    New here?{" "}
-    <Text style={{ color: C.forestGreen, fontWeight: "600" }}>Create Account</Text>
-  </Text>
-</Pressable>
+            <Text style={{ color: C.muted, fontSize: 13, textAlign: "center", marginTop: -8, marginBottom: 16 }}>
+              New here?{" "}
+              <Text style={{ color: C.green, fontWeight: "600" }}>Create Account</Text>
+            </Text>
+          </Pressable>
 
           {/* Footer note */}
           <Text style={s.footerNote}>
@@ -178,12 +175,7 @@ if (status === "approved") {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.navy },
-  bgGlow: {
-    position: "absolute", top: "15%", alignSelf: "center",
-    width: 300, height: 300, borderRadius: 150,
-    backgroundColor: C.darkGreen, opacity: 0.35,
-  },
+  root: { flex: 1, backgroundColor: C.bg },
   kav: { flex: 1 },
   content: {
     flex: 1, paddingHorizontal: 28,
@@ -197,30 +189,30 @@ const s = StyleSheet.create({
   // Logo
   logoMark: {
     width: 48, height: 48, borderRadius: 14,
-    backgroundColor: C.forestGreen,
+    backgroundColor: C.green,
     alignItems: "center", justifyContent: "center",
-    marginBottom: 20, borderWidth: 1, borderColor: C.midGreen,
+    marginBottom: 20,
   },
-  logoMarkText: { fontSize: 24, fontWeight: "800", color: C.white },
+  logoMarkText: { fontSize: 24, fontWeight: "800", color: "#FFFFFF" },
 
   // Header
-  title: { fontSize: 26, fontWeight: "700", color: C.white, marginBottom: 6 },
+  title: { fontSize: 26, fontWeight: "800", color: C.ink, marginBottom: 6 },
   subtitle: { fontSize: 14, color: C.muted, lineHeight: 20 },
 
   // Divider
   divider: {
-    width: 36, height: 2, backgroundColor: C.forestGreen,
-    borderRadius: 1, marginVertical: 22, opacity: 0.9,
+    width: 36, height: 3, backgroundColor: C.green,
+    borderRadius: 2, marginVertical: 22,
   },
 
   // Form
-  label: { fontSize: 13, fontWeight: "600", color: C.offWhite, marginBottom: 8, letterSpacing: 0.3 },
+  label: { fontSize: 13, fontWeight: "600", color: C.ink, marginBottom: 8, letterSpacing: 0.3 },
   input: {
     backgroundColor: C.inputBg,
-    borderWidth: 0.5, borderColor: C.border,
+    borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 12, paddingHorizontal: 16,
     paddingVertical: 14, fontSize: 15,
-    color: C.white, marginBottom: 18,
+    color: C.ink, marginBottom: 18,
   },
 
   // Error
@@ -231,18 +223,17 @@ const s = StyleSheet.create({
 
   // CTA
   cta: {
-    backgroundColor: C.forestGreen,
-    paddingVertical: 16, borderRadius: 14,
+    backgroundColor: C.green,
+    paddingVertical: 16, borderRadius: 12,
     alignItems: "center", marginBottom: 24,
-    borderWidth: 1, borderColor: C.midGreen,
     width: width - 56,
   },
-  ctaPressed: { backgroundColor: C.midGreen, transform: [{ scale: 0.97 }] },
+  ctaPressed: { backgroundColor: C.greenDark, transform: [{ scale: 0.97 }] },
   ctaDisabled: { opacity: 0.7 },
-  ctaText: { fontSize: 16, fontWeight: "700", color: C.white, letterSpacing: 0.5 },
+  ctaText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", letterSpacing: 0.5 },
 
   // Footer
   footerNote: { fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20, marginBottom: 24 },
-  footerLink: { color: C.forestGreen, fontWeight: "600" },
+  footerLink: { color: C.green, fontWeight: "600" },
   domain: { fontSize: 12, color: C.muted, textAlign: "center", letterSpacing: 1.2 },
 });

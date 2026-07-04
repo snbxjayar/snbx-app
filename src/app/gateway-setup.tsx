@@ -10,6 +10,8 @@ import { NativeModules, NativeEventEmitter, PermissionsAndroid } from "react-nat
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { router } from "expo-router";
+import * as Application from "expo-application";
+import * as Clipboard from "expo-clipboard";
 
 const C = {
   forestGreen: "#1D9E75",
@@ -53,6 +55,16 @@ export default function GatewaySetupScreen() {
   const [saving, setSaving]           = useState(false);
   const [permGranted, setPermGranted] = useState(false);
   const [error, setError]             = useState("");
+  const [copied, setCopied]           = useState(false);
+
+  const deviceId = Platform.OS === "android" ? Application.getAndroidId() : null;
+
+  const handleCopyDeviceId = async () => {
+    if (!deviceId) return;
+    await Clipboard.setStringAsync(deviceId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     loadGatewayStatus();
@@ -146,6 +158,7 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
     await setDoc(doc(db, "gateway_status", uid), {
       isActive:      val,
       selectedSim:   selectedSim,
+      deviceId:      deviceId,
       updatedAt:     serverTimestamp(),
       totalSent:     status?.totalSent ?? 0,
       totalReceived: status?.totalReceived ?? 0,
@@ -179,6 +192,7 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
       await setDoc(doc(db, "gateway_status", uid), {
         isActive:      true,
         selectedSim:   selectedSim,
+        deviceId:      deviceId,
         activatedAt:   serverTimestamp(),
         updatedAt:     serverTimestamp(),
         totalSent:     status?.totalSent ?? 0,
@@ -218,9 +232,6 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Status card */}
-        <Text style={{ color: "yellow", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
-  Module: {SNBXSmsModule ? "✓ Loaded" : "✗ Not found"}
-</Text>
         <View style={[s.statusCard, gatewayOn && s.statusCardActive]}>
           <View style={s.statusLeft}>
             <View style={[s.statusDot, gatewayOn ? s.statusDotActive : s.statusDotInactive]} />
@@ -256,6 +267,25 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
               <Text style={s.statLabel}>SMS Received</Text>
             </View>
           </View>
+        )}
+
+        {/* Device ID (for SNBX onboarding) */}
+        {deviceId && (
+          <>
+            <Text style={s.sectionLabel}>Device ID</Text>
+            <View style={s.deviceCard}>
+              <Text style={s.deviceHint}>
+                Send this Device ID to the SNBX team during onboarding to link this phone to your GHL sub-account.
+              </Text>
+              <Text style={s.deviceId}>{deviceId}</Text>
+              <Pressable
+                style={({ pressed }) => [s.copyBtn, pressed && s.copyBtnPressed]}
+                onPress={handleCopyDeviceId}
+              >
+                <Text style={s.copyBtnText}>{copied ? "✓ Copied!" : "Copy Device ID"}</Text>
+              </Pressable>
+            </View>
+          </>
         )}
 
         {/* Permission status */}
@@ -395,6 +425,23 @@ const s = StyleSheet.create({
   },
   statValue: { fontSize: 24, fontWeight: "700", color: C.white, marginBottom: 4 },
   statLabel: { fontSize: 12, color: C.muted },
+
+  // Device ID card
+  deviceCard: {
+    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    borderRadius: 14, padding: 16, marginBottom: 20,
+  },
+  deviceHint: { fontSize: 12, color: C.muted, lineHeight: 18, marginBottom: 10 },
+  deviceId: {
+    fontSize: 16, color: C.offWhite, fontFamily: Platform.OS === "android" ? "monospace" : "Courier",
+    letterSpacing: 1, marginBottom: 12,
+  },
+  copyBtn: {
+    backgroundColor: C.border, borderRadius: 10,
+    paddingVertical: 12, alignItems: "center",
+  },
+  copyBtnPressed: { backgroundColor: C.midGreen },
+  copyBtnText: { fontSize: 14, fontWeight: "600", color: C.forestGreen },
 
   // Section label
   sectionLabel: {

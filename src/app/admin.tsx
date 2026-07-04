@@ -4,9 +4,9 @@
 
 import {
   View, Text, StyleSheet, StatusBar, Pressable,
-  ScrollView, ActivityIndicator, RefreshControl, Alert,
+  ScrollView, ActivityIndicator, RefreshControl,
 } from "react-native";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection, query, where, onSnapshot,
@@ -14,20 +14,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { router } from "expo-router";
-
-const C = {
-  forestGreen: "#1D9E75",
-  darkGreen:   "#1B3A2D",
-  midGreen:    "#0F6E56",
-  gold:        "#C9A84C",
-  navy:        "#0D1B2A",
-  navyCard:    "#0F2030",
-  white:       "#FFFFFF",
-  offWhite:    "#F0F5F2",
-  muted:       "#7A9E8E",
-  border:      "#1A3A2A",
-  error:       "#E05A5A",
-};
+import { C } from "../theme";
 
 type UserRecord = {
   id: string;
@@ -78,7 +65,7 @@ function UserCard({
         ]}>
           <Text style={[
             st.statusText,
-            user.status === "approved" && { color: C.forestGreen },
+            user.status === "approved" && { color: C.greenDark },
             user.status === "rejected" && { color: C.error },
             user.status === "pending"  && { color: C.gold },
           ]}>
@@ -96,7 +83,7 @@ function UserCard({
             disabled={!!processing}
           >
             {isProcessing
-              ? <ActivityIndicator color={C.white} size="small" />
+              ? <ActivityIndicator color="#FFFFFF" size="small" />
               : <Text style={st.approveBtnText}>✓ Approve</Text>
             }
           </Pressable>
@@ -148,23 +135,37 @@ export default function AdminScreen() {
   const [isAdmin, setIsAdmin]     = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
+  const unsubAdminCheckRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user) { router.replace("/"); return; }
+      if (!user) {
+        // Signed out — detach admin-check listener before redirecting
+        unsubAdminCheckRef.current?.();
+        unsubAdminCheckRef.current = null;
+        router.replace("/");
+        return;
+      }
 
       // Check admin status in real-time
       const userRef = doc(db, "users", user.uid);
-      const unsubDoc = onSnapshot(userRef, (snap) => {
+      unsubAdminCheckRef.current = onSnapshot(userRef, (snap) => {
         if (!snap.exists() || !snap.data().isAdmin) {
+          unsubAdminCheckRef.current?.();
+          unsubAdminCheckRef.current = null;
           router.replace("/dashboard" as any);
           return;
         }
         setIsAdmin(true);
         setAuthChecked(true);
       });
-      return () => unsubDoc();
     });
-    return () => unsub();
+
+    return () => {
+      unsub();
+      unsubAdminCheckRef.current?.();
+      unsubAdminCheckRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -182,38 +183,41 @@ export default function AdminScreen() {
       snap.forEach((d) => records.push({ id: d.id, ...d.data() } as UserRecord));
       setUsers(records);
       setLoading(false);
+    }, (err) => {
+      // Sign-out mid-listen throws permission-denied — expected, ignore
+      console.log("Admin list listener ended:", err.code);
     });
 
     return () => unsub();
   }, [tab, authChecked, isAdmin]);
 
   const handleApprove = useCallback(async (userId: string) => {
-  setProcessing(userId);
-  try {
-    await updateDoc(doc(db, "users", userId), {
-      status: "approved",
-      approvedAt: serverTimestamp(),
-    });
-  } catch (e) {
-    console.error("Approve error:", e);
-  } finally {
-    setProcessing(null);
-  }
-}, []);
+    setProcessing(userId);
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        status: "approved",
+        approvedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.error("Approve error:", e);
+    } finally {
+      setProcessing(null);
+    }
+  }, []);
 
-const handleReject = useCallback(async (userId: string) => {
-  setProcessing(userId);
-  try {
-    await updateDoc(doc(db, "users", userId), {
-      status: "rejected",
-      rejectedAt: serverTimestamp(),
-    });
-  } catch (e) {
-    console.error("Reject error:", e);
-  } finally {
-    setProcessing(null);
-  }
-}, []);
+  const handleReject = useCallback(async (userId: string) => {
+    setProcessing(userId);
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        status: "rejected",
+        rejectedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.error("Reject error:", e);
+    } finally {
+      setProcessing(null);
+    }
+  }, []);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -225,29 +229,29 @@ const handleReject = useCallback(async (userId: string) => {
   if (!authChecked) {
     return (
       <View style={st.loadingRoot}>
-        <ActivityIndicator color={C.forestGreen} size="large" />
+        <ActivityIndicator color={C.green} size="large" />
       </View>
     );
   }
 
   return (
     <View style={st.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.navy} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       {/* Header */}
       <View style={st.header}>
-        <Pressable 
-  onPress={() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/dashboard" as any);
-    }
-  }} 
-  style={st.back}
->
-  <Text style={st.backText}>←</Text>
-</Pressable>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/dashboard" as any);
+            }
+          }}
+          style={st.back}
+        >
+          <Text style={st.backText}>←</Text>
+        </Pressable>
         <View>
           <Text style={st.headerTitle}>Admin Panel</Text>
           <Text style={st.headerSub}>SNBX Pro Super Admin</Text>
@@ -282,12 +286,12 @@ const handleReject = useCallback(async (userId: string) => {
         contentContainerStyle={st.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.forestGreen} colors={[C.forestGreen]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green} colors={[C.green]} />
         }
       >
         {loading ? (
           <View style={st.center}>
-            <ActivityIndicator color={C.forestGreen} size="large" />
+            <ActivityIndicator color={C.green} size="large" />
           </View>
         ) : users.length === 0 ? (
           <View style={st.center}>
@@ -319,8 +323,8 @@ const handleReject = useCallback(async (userId: string) => {
 }
 
 const st = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.navy },
-  loadingRoot: { flex: 1, backgroundColor: C.navy, alignItems: "center", justifyContent: "center" },
+  root: { flex: 1, backgroundColor: C.bg },
+  loadingRoot: { flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" },
   scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 48 },
   center: { alignItems: "center", justifyContent: "center", padding: 48 },
   emptyIcon: { fontSize: 40, marginBottom: 14 },
@@ -329,14 +333,14 @@ const st = StyleSheet.create({
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
-    borderBottomWidth: 0.5, borderBottomColor: C.border,
+    borderBottomWidth: 1, borderBottomColor: C.cardBorder,
   },
   back: { padding: 4 },
   backText: { fontSize: 22, color: C.muted },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: C.white },
+  headerTitle: { fontSize: 17, fontWeight: "800", color: C.ink },
   headerSub: { fontSize: 12, color: C.muted, marginTop: 2 },
   adminBadge: {
-    backgroundColor: "rgba(201,168,76,0.12)", borderWidth: 0.5,
+    backgroundColor: C.goldSoft, borderWidth: 1,
     borderColor: C.gold, borderRadius: 10,
     paddingHorizontal: 10, paddingVertical: 4,
   },
@@ -345,50 +349,50 @@ const st = StyleSheet.create({
   tabs: { flexDirection: "row", paddingHorizontal: 20, paddingVertical: 12, gap: 8 },
   tab: {
     flex: 1, paddingVertical: 8, borderRadius: 20,
-    alignItems: "center", backgroundColor: C.navyCard,
-    borderWidth: 0.5, borderColor: C.border,
+    alignItems: "center", backgroundColor: C.cardBg,
+    borderWidth: 1, borderColor: C.cardBorder,
   },
-  tabActive: { backgroundColor: C.forestGreen, borderColor: C.forestGreen },
+  tabActive: { backgroundColor: C.green, borderColor: C.green },
   tabText: { fontSize: 12, fontWeight: "600", color: C.muted },
-  tabTextActive: { color: C.white },
+  tabTextActive: { color: "#FFFFFF" },
 
   card: {
-    backgroundColor: C.navyCard, borderWidth: 0.5,
-    borderColor: C.border, borderRadius: 16,
+    backgroundColor: C.cardBg, borderWidth: 1,
+    borderColor: C.cardBorder, borderRadius: 16,
     padding: 16, marginBottom: 10,
   },
   cardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 12 },
   avatar: {
     width: 42, height: 42, borderRadius: 21,
-    backgroundColor: C.forestGreen, alignItems: "center", justifyContent: "center",
+    backgroundColor: C.green, alignItems: "center", justifyContent: "center",
   },
-  avatarText: { fontSize: 16, fontWeight: "700", color: C.white },
+  avatarText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
   cardInfo: { flex: 1 },
-  cardName: { fontSize: 15, fontWeight: "600", color: C.white, marginBottom: 2 },
+  cardName: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 2 },
   cardEmail: { fontSize: 12, color: C.muted, marginBottom: 2 },
   cardDate: { fontSize: 11, color: C.muted },
 
   statusBadge: {
     paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: 8, borderWidth: 0.5,
+    borderRadius: 8, borderWidth: 1,
   },
-  statusApproved: { backgroundColor: "rgba(29,158,117,0.1)", borderColor: "rgba(29,158,117,0.4)" },
-  statusRejected: { backgroundColor: "rgba(224,90,90,0.1)", borderColor: "rgba(224,90,90,0.4)" },
-  statusPending:  { backgroundColor: "rgba(201,168,76,0.1)", borderColor: "rgba(201,168,76,0.4)" },
+  statusApproved: { backgroundColor: C.greenSoft, borderColor: "rgba(29,158,117,0.4)" },
+  statusRejected: { backgroundColor: "rgba(214,69,69,0.06)", borderColor: "rgba(214,69,69,0.35)" },
+  statusPending:  { backgroundColor: C.goldSoft, borderColor: "rgba(184,147,58,0.45)" },
   statusText: { fontSize: 10, fontWeight: "700", letterSpacing: 0.3 },
 
   actions: { flexDirection: "row", gap: 8, marginTop: 4 },
   approveBtn: {
-    flex: 1, backgroundColor: C.forestGreen, paddingVertical: 10,
+    flex: 1, backgroundColor: C.green, paddingVertical: 10,
     borderRadius: 10, alignItems: "center",
   },
-  approveBtnPressed: { backgroundColor: C.midGreen },
-  approveBtnText: { fontSize: 13, fontWeight: "700", color: C.white },
+  approveBtnPressed: { backgroundColor: C.greenDark },
+  approveBtnText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
   rejectBtn: {
     flex: 1, backgroundColor: "transparent", paddingVertical: 10,
-    borderRadius: 10, alignItems: "center", borderWidth: 0.5, borderColor: C.error,
+    borderRadius: 10, alignItems: "center", borderWidth: 1, borderColor: C.error,
   },
-  rejectBtnPressed: { backgroundColor: "rgba(224,90,90,0.1)" },
+  rejectBtnPressed: { backgroundColor: "rgba(214,69,69,0.06)" },
   rejectBtnText: { fontSize: 13, fontWeight: "700", color: C.error },
   btnDisabled: { opacity: 0.6 },
 });

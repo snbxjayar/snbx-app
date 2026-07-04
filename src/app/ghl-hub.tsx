@@ -5,22 +5,9 @@ import {
   View, Text, StyleSheet, StatusBar, Pressable,
   ScrollView, ActivityIndicator,
 } from "react-native";
-import { useState, useEffect } from "react";
 import { router } from "expo-router";
 import { useGHLCredentials } from "../hooks/useGHL";
-
-const C = {
-  forestGreen: "#1D9E75",
-  darkGreen:   "#1B3A2D",
-  midGreen:    "#0F6E56",
-  gold:        "#C9A84C",
-  navy:        "#0D1B2A",
-  navyCard:    "#0F2030",
-  white:       "#FFFFFF",
-  offWhite:    "#F0F5F2",
-  muted:       "#7A9E8E",
-  border:      "#1A3A2A",
-};
+import { C } from "../theme";
 
 const MODULES = [
   {
@@ -58,13 +45,6 @@ const MODULES = [
     route: "/ghl-reports",
     available: false,
   },
-  {
-  icon: "📱",
-  label: "SMS Gateway",
-  desc: "Manage your SIM card gateway settings",
-  route: "/gateway-setup",
-  available: true,
-},
 ];
 
 export default function GHLHubScreen() {
@@ -72,7 +52,7 @@ export default function GHLHubScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.navy} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       {/* Header */}
       <View style={s.header}>
@@ -95,10 +75,10 @@ export default function GHLHubScreen() {
 
         {/* Connection status */}
         {loading ? (
-          <ActivityIndicator color={C.forestGreen} style={{ marginBottom: 20 }} />
+          <ActivityIndicator color={C.green} style={{ marginBottom: 20 }} />
         ) : (
           <View style={[s.statusCard, creds ? s.statusConnected : s.statusDisconnected]}>
-            <View style={[s.statusDot, { backgroundColor: creds ? C.forestGreen : C.gold }]} />
+            <View style={[s.statusDot, { backgroundColor: creds ? C.green : C.gold }]} />
             <View style={s.statusInfo}>
               <Text style={s.statusTitle}>
                 {creds ? "Connected to GHL" : "Not Connected"}
@@ -166,36 +146,36 @@ export default function GHLHubScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.navy },
+  root: { flex: 1, backgroundColor: C.bg },
   scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 48 },
 
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
-    borderBottomWidth: 0.5, borderBottomColor: C.border,
+    borderBottomWidth: 1, borderBottomColor: C.cardBorder,
   },
   back: { padding: 4 },
   backText: { fontSize: 22, color: C.muted },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: C.white, textAlign: "center" },
+  headerTitle: { fontSize: 17, fontWeight: "800", color: C.ink, textAlign: "center" },
   headerSub: { fontSize: 12, color: C.muted, textAlign: "center" },
   settingsBtn: { padding: 4 },
   settingsBtnText: { fontSize: 22 },
 
   statusCard: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    borderWidth: 0.5, borderRadius: 14, padding: 14, marginTop: 16, marginBottom: 20,
+    borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 16, marginBottom: 20,
   },
-  statusConnected: { backgroundColor: "rgba(29,158,117,0.08)", borderColor: "rgba(29,158,117,0.3)" },
-  statusDisconnected: { backgroundColor: "rgba(201,168,76,0.08)", borderColor: "rgba(201,168,76,0.3)" },
+  statusConnected: { backgroundColor: C.greenSoft, borderColor: "rgba(29,158,117,0.35)" },
+  statusDisconnected: { backgroundColor: C.goldSoft, borderColor: "rgba(184,147,58,0.4)" },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusInfo: { flex: 1 },
-  statusTitle: { fontSize: 14, fontWeight: "600", color: C.white, marginBottom: 2 },
+  statusTitle: { fontSize: 14, fontWeight: "700", color: C.ink, marginBottom: 2 },
   statusDesc: { fontSize: 12, color: C.muted },
   connectBtn: {
-    backgroundColor: C.forestGreen, paddingHorizontal: 14,
+    backgroundColor: C.green, paddingHorizontal: 14,
     paddingVertical: 7, borderRadius: 10,
   },
-  connectBtnText: { fontSize: 12, fontWeight: "700", color: C.white },
+  connectBtnText: { fontSize: 12, fontWeight: "700", color: "#FFFFFF" },
 
   sectionLabel: {
     fontSize: 12, fontWeight: "600", color: C.muted,
@@ -204,22 +184,22 @@ const s = StyleSheet.create({
 
   moduleCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: C.navyCard, borderWidth: 0.5,
-    borderColor: C.border, borderRadius: 14,
+    backgroundColor: C.cardBg, borderWidth: 1,
+    borderColor: C.cardBorder, borderRadius: 14,
     padding: 16, marginBottom: 10,
   },
-  moduleCardLocked: { opacity: 0.5 },
+  moduleCardLocked: { opacity: 0.55 },
   moduleCardPressed: { opacity: 0.75, transform: [{ scale: 0.99 }] },
   moduleIcon: { fontSize: 24 },
   moduleBody: { flex: 1 },
   moduleTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  moduleLabel: { fontSize: 15, fontWeight: "600", color: C.white },
+  moduleLabel: { fontSize: 15, fontWeight: "700", color: C.ink },
   moduleLabelLocked: { color: C.muted },
   moduleDesc: { fontSize: 12, color: C.muted },
   moduleArrow: { fontSize: 20, color: C.muted },
   comingSoonBadge: {
-    backgroundColor: "rgba(201,168,76,0.12)", borderWidth: 0.5,
-    borderColor: "rgba(201,168,76,0.3)", borderRadius: 8,
+    backgroundColor: C.goldSoft, borderWidth: 1,
+    borderColor: "rgba(184,147,58,0.4)", borderRadius: 8,
     paddingHorizontal: 6, paddingVertical: 2,
   },
   comingSoonText: { fontSize: 9, fontWeight: "600", color: C.gold },

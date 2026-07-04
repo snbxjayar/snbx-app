@@ -93,6 +93,7 @@ class SmsReceiver : BroadcastReceiver() {
                 val conn = (URL(INBOUND_URL).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("x-snbx-secret", "3YlhPsMUJAcEjiNz5GyuQX8emCtTDbv4xFrZa6kB")
                     connectTimeout = 10000
                     readTimeout = 15000
                     doOutput = true

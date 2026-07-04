@@ -17,6 +17,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.messaging.FirebaseMessaging
 import java.util.Date
 import java.util.concurrent.TimeUnit
+import android.provider.Settings
 
 class GatewayService : Service() {
 
@@ -69,12 +70,20 @@ class GatewayService : Service() {
         Log.d("SNBXGateway", "Watchdog scheduled")
     }
 
-    // ── Listen for outgoing SMS jobs in Firestore ─────────────────────────────
+    // ── Listen for outgoing SMS jobs in Firestore (this device only) ──────────
     private fun startListening() {
         firestoreListener?.remove()
 
+        val deviceId = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ANDROID_ID
+        ) ?: "unknown"
+
+        Log.d("SNBXGateway", "Listening for jobs assigned to device $deviceId")
+
         firestoreListener = db.collection("sms_jobs")
             .whereEqualTo("status", "queued")
+            .whereEqualTo("deviceId", deviceId)
             .addSnapshotListener { snapshots, error ->
                 if (error != null) {
                     Log.e("SNBXGateway", "Firestore listen error: ${error.message}")
