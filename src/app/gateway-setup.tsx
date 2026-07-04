@@ -6,27 +6,13 @@ import {
   ScrollView, Switch, ActivityIndicator, Platform,
 } from "react-native";
 import { useState, useEffect } from "react";
-import { NativeModules, NativeEventEmitter, PermissionsAndroid } from "react-native";
+import { NativeModules, PermissionsAndroid } from "react-native";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { router } from "expo-router";
 import * as Application from "expo-application";
 import * as Clipboard from "expo-clipboard";
-
-const C = {
-  forestGreen: "#1D9E75",
-  darkGreen:   "#1B3A2D",
-  midGreen:    "#0F6E56",
-  gold:        "#C9A84C",
-  navy:        "#0D1B2A",
-  navyCard:    "#0F2030",
-  white:       "#FFFFFF",
-  offWhite:    "#F0F5F2",
-  muted:       "#7A9E8E",
-  border:      "#1A3A2A",
-  error:       "#E05A5A",
-  success:     "#1D9E75",
-};
+import { C } from "../theme";
 
 const { SNBXSmsModule } = NativeModules;
 
@@ -93,87 +79,83 @@ export default function GatewaySetupScreen() {
   };
 
   const requestPermissionsAndLoadSims = async () => {
-  try {
-    // First request basic permissions
-    const permissionsToRequest = [
-  PermissionsAndroid.PERMISSIONS.SEND_SMS,
-  PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
-  PermissionsAndroid.PERMISSIONS.READ_SMS,
-  PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
-];
+    try {
+      // First request basic permissions
+      const permissionsToRequest = [
+        PermissionsAndroid.PERMISSIONS.SEND_SMS,
+        PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
+        PermissionsAndroid.PERMISSIONS.READ_SMS,
+        PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+      ];
 
-if (Platform.OS === "android" && Platform.Version >= 33) {
-  permissionsToRequest.push(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-}
+      if (Platform.OS === "android" && Platform.Version >= 33) {
+        permissionsToRequest.push(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      }
 
-const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
+      const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
 
-    const allGranted = Object.values(grants).every(
-      (g) => g === PermissionsAndroid.RESULTS.GRANTED
-    );
-    setPermGranted(allGranted);
-
-    if (!allGranted) {
-      // Guide user to settings manually
-      setError(
-        "Permissions denied. Please go to:\nSettings → Apps → SNBX → Permissions → Enable all SMS permissions manually."
+      const allGranted = Object.values(grants).every(
+        (g) => g === PermissionsAndroid.RESULTS.GRANTED
       );
-      return;
-    }
+      setPermGranted(allGranted);
 
-    if (SNBXSmsModule) {
-      const slots: SimSlot[] = await SNBXSmsModule.getSimSlots();
-      setSimSlots(slots);
-      if (slots.length === 1) setSelectedSim(slots[0].subscriptionId);
+      if (!allGranted) {
+        // Guide user to settings manually
+        setError(
+          "Permissions denied. Please go to:\nSettings → Apps → SNBX → Permissions → Enable all SMS permissions manually."
+        );
+        return;
+      }
+
+      if (SNBXSmsModule) {
+        const slots: SimSlot[] = await SNBXSmsModule.getSimSlots();
+        setSimSlots(slots);
+        if (slots.length === 1) setSelectedSim(slots[0].subscriptionId);
+      }
+    } catch (e: any) {
+      setError("Could not load SIM info: " + e.message);
     }
-  } catch (e: any) {
-    setError("Could not load SIM info: " + e.message);
-  }
-};
+  };
 
   const handleToggleGateway = async (val: boolean) => {
-  setSaving(true);
-  setError("");
-  try {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
+    setSaving(true);
+    setError("");
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
 
-    // Start or stop the native Android service
-    console.log("Starting gateway service...");
+      // Start or stop the native Android service
+      console.log("Starting gateway service...");
 
-    if (Platform.OS === "android" && SNBXSmsModule) {
-          console.log("SNBXSmsModule found, calling startGatewayService");
+      if (Platform.OS === "android" && SNBXSmsModule) {
+        console.log("SNBXSmsModule found, calling startGatewayService");
 
-      if (val) {
-        await SNBXSmsModule.startGatewayService();
+        if (val) {
+          await SNBXSmsModule.startGatewayService();
           console.log("startGatewayService called successfully");
-
-      } else {
-        await SNBXSmsModule.stopGatewayService();
-          console.log("SNBXSmsModule NOT found:", SNBXSmsModule);
-
+        } else {
+          await SNBXSmsModule.stopGatewayService();
+        }
       }
+
+      await setDoc(doc(db, "gateway_status", uid), {
+        isActive:      val,
+        selectedSim:   selectedSim,
+        deviceId:      deviceId,
+        updatedAt:     serverTimestamp(),
+        totalSent:     status?.totalSent ?? 0,
+        totalReceived: status?.totalReceived ?? 0,
+      }, { merge: true });
+
+      setGatewayOn(val);
+    } catch (e: any) {
+      setError("Failed to update gateway. Try again.");
+    } finally {
+      setSaving(false);
     }
-
-    await setDoc(doc(db, "gateway_status", uid), {
-      isActive:      val,
-      selectedSim:   selectedSim,
-      deviceId:      deviceId,
-      updatedAt:     serverTimestamp(),
-      totalSent:     status?.totalSent ?? 0,
-      totalReceived: status?.totalReceived ?? 0,
-    }, { merge: true });
-
-    setGatewayOn(val);
-  } catch (e: any) {
-    setError("Failed to update gateway. Try again.");
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   const handleSaveAndActivate = async () => {
-    
     if (!selectedSim) {
       setError("Please select a SIM card first.");
       return;
@@ -184,10 +166,10 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
       const uid = auth.currentUser?.uid;
       if (!uid) return;
 
-       if (Platform.OS === "android" && SNBXSmsModule) {
-      await SNBXSmsModule.startGatewayService();
-      await SNBXSmsModule.requestBatteryOptimization();
-    }
+      if (Platform.OS === "android" && SNBXSmsModule) {
+        await SNBXSmsModule.startGatewayService();
+        await SNBXSmsModule.requestBatteryOptimization();
+      }
 
       await setDoc(doc(db, "gateway_status", uid), {
         isActive:      true,
@@ -210,7 +192,7 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
   if (loading) {
     return (
       <View style={s.loadingRoot}>
-        <ActivityIndicator color={C.forestGreen} size="large" />
+        <ActivityIndicator color={C.green} size="large" />
         <Text style={s.loadingText}>Loading gateway status…</Text>
       </View>
     );
@@ -218,7 +200,7 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.navy} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       {/* Header */}
       <View style={s.header}>
@@ -245,12 +227,12 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
             </View>
           </View>
           {saving
-            ? <ActivityIndicator color={C.forestGreen} size="small" />
+            ? <ActivityIndicator color={C.green} size="small" />
             : <Switch
                 value={gatewayOn}
                 onValueChange={handleToggleGateway}
-                trackColor={{ false: C.border, true: C.forestGreen }}
-                thumbColor={C.white}
+                trackColor={{ false: C.cardBorder, true: C.green }}
+                thumbColor="#FFFFFF"
               />
           }
         </View>
@@ -282,7 +264,9 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
                 style={({ pressed }) => [s.copyBtn, pressed && s.copyBtnPressed]}
                 onPress={handleCopyDeviceId}
               >
-                <Text style={s.copyBtnText}>{copied ? "✓ Copied!" : "Copy Device ID"}</Text>
+                <Text style={[s.copyBtnText, copied && { color: "#FFFFFF" }]}>
+                  {copied ? "✓ Copied!" : "Copy Device ID"}
+                </Text>
               </Pressable>
             </View>
           </>
@@ -298,7 +282,7 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
           ].map((p) => (
             <View key={p.label} style={s.permRow}>
               <Text style={s.permLabel}>{p.label}</Text>
-              <Text style={[s.permStatus, { color: p.granted ? C.success : C.error }]}>
+              <Text style={[s.permStatus, { color: p.granted ? C.greenDark : C.error }]}>
                 {p.granted ? "✓ Granted" : "✗ Required"}
               </Text>
             </View>
@@ -331,7 +315,9 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
             >
               <View style={s.simLeft}>
                 <View style={[s.simSlotBadge, selectedSim === sim.subscriptionId && s.simSlotBadgeSelected]}>
-                  <Text style={s.simSlotText}>SIM {sim.simSlotIndex + 1}</Text>
+                  <Text style={[s.simSlotText, selectedSim === sim.subscriptionId && { color: "#FFFFFF" }]}>
+                    SIM {sim.simSlotIndex + 1}
+                  </Text>
                 </View>
                 <View>
                   <Text style={s.simName}>{sim.displayName || `SIM ${sim.simSlotIndex + 1}`}</Text>
@@ -374,7 +360,7 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
             disabled={saving}
           >
             {saving
-              ? <ActivityIndicator color={C.white} />
+              ? <ActivityIndicator color="#FFFFFF" />
               : <Text style={s.activateBtnText}>Activate Gateway</Text>
             }
           </Pressable>
@@ -388,8 +374,8 @@ const grants = await PermissionsAndroid.requestMultiple(permissionsToRequest);
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.navy },
-  loadingRoot: { flex: 1, backgroundColor: C.navy, alignItems: "center", justifyContent: "center", gap: 14 },
+  root: { flex: 1, backgroundColor: C.bg },
+  loadingRoot: { flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", gap: 14 },
   loadingText: { fontSize: 14, color: C.muted },
   scroll: { paddingHorizontal: 20, paddingBottom: 48 },
 
@@ -397,51 +383,51 @@ const s = StyleSheet.create({
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
-    borderBottomWidth: 0.5, borderBottomColor: C.border,
+    borderBottomWidth: 1, borderBottomColor: C.cardBorder,
   },
   back: { padding: 4 },
   backText: { fontSize: 22, color: C.muted },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: C.white },
+  headerTitle: { fontSize: 17, fontWeight: "800", color: C.ink },
 
   // Status card
   statusCard: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 16, padding: 16, marginTop: 20, marginBottom: 12,
   },
-  statusCardActive: { borderColor: C.forestGreen },
+  statusCardActive: { borderColor: C.green, borderWidth: 1.5, backgroundColor: C.greenSoft },
   statusLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
-  statusDotActive: { backgroundColor: C.forestGreen },
+  statusDotActive: { backgroundColor: C.green },
   statusDotInactive: { backgroundColor: C.muted },
-  statusTitle: { fontSize: 15, fontWeight: "700", color: C.white, marginBottom: 2 },
+  statusTitle: { fontSize: 15, fontWeight: "800", color: C.ink, marginBottom: 2 },
   statusSub: { fontSize: 12, color: C.muted, lineHeight: 18 },
 
   // Stats
   statsRow: { flexDirection: "row", gap: 10, marginBottom: 20 },
   statCard: {
-    flex: 1, backgroundColor: C.navyCard, borderWidth: 0.5,
-    borderColor: C.border, borderRadius: 14, padding: 14, alignItems: "center",
+    flex: 1, backgroundColor: C.cardBg, borderWidth: 1,
+    borderColor: C.cardBorder, borderRadius: 14, padding: 14, alignItems: "center",
   },
-  statValue: { fontSize: 24, fontWeight: "700", color: C.white, marginBottom: 4 },
+  statValue: { fontSize: 24, fontWeight: "800", color: C.ink, marginBottom: 4 },
   statLabel: { fontSize: 12, color: C.muted },
 
   // Device ID card
   deviceCard: {
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 14, padding: 16, marginBottom: 20,
   },
   deviceHint: { fontSize: 12, color: C.muted, lineHeight: 18, marginBottom: 10 },
   deviceId: {
-    fontSize: 16, color: C.offWhite, fontFamily: Platform.OS === "android" ? "monospace" : "Courier",
+    fontSize: 16, color: C.ink, fontFamily: Platform.OS === "android" ? "monospace" : "Courier",
     letterSpacing: 1, marginBottom: 12,
   },
   copyBtn: {
-    backgroundColor: C.border, borderRadius: 10,
-    paddingVertical: 12, alignItems: "center",
+    backgroundColor: C.greenSoft, borderWidth: 1, borderColor: "#CBEADF",
+    borderRadius: 10, paddingVertical: 12, alignItems: "center",
   },
-  copyBtnPressed: { backgroundColor: C.midGreen },
-  copyBtnText: { fontSize: 14, fontWeight: "600", color: C.forestGreen },
+  copyBtnPressed: { backgroundColor: C.green },
+  copyBtnText: { fontSize: 14, fontWeight: "700", color: C.greenDark },
 
   // Section label
   sectionLabel: {
@@ -451,69 +437,68 @@ const s = StyleSheet.create({
 
   // Permissions
   permCard: {
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 14, padding: 16, marginBottom: 20,
   },
   permRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 },
-  permLabel: { fontSize: 14, color: C.offWhite },
+  permLabel: { fontSize: 14, color: C.body },
   permStatus: { fontSize: 13, fontWeight: "600" },
   grantBtn: {
-    backgroundColor: C.forestGreen, borderRadius: 12,
+    backgroundColor: C.green, borderRadius: 12,
     paddingVertical: 12, alignItems: "center", marginTop: 12,
   },
-  grantBtnText: { fontSize: 14, fontWeight: "700", color: C.white },
+  grantBtnText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF" },
 
   // SIM cards
   simCard: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 14, padding: 16, marginBottom: 10,
   },
-  simCardSelected: { borderColor: C.forestGreen },
+  simCardSelected: { borderColor: C.green, borderWidth: 1.5 },
   simLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   simSlotBadge: {
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
-    backgroundColor: C.border,
+    backgroundColor: C.cardBorder,
   },
-  simSlotBadgeSelected: { backgroundColor: C.forestGreen },
-  simSlotText: { fontSize: 12, fontWeight: "700", color: C.white },
-  simName: { fontSize: 14, fontWeight: "600", color: C.white, marginBottom: 2 },
+  simSlotBadgeSelected: { backgroundColor: C.green },
+  simSlotText: { fontSize: 12, fontWeight: "700", color: C.body },
+  simName: { fontSize: 14, fontWeight: "700", color: C.ink, marginBottom: 2 },
   simCarrier: { fontSize: 12, color: C.muted },
-  simNumber: { fontSize: 12, color: C.forestGreen, marginTop: 2 },
+  simNumber: { fontSize: 12, color: C.greenDark, marginTop: 2 },
   simRadio: {
     width: 20, height: 20, borderRadius: 10,
-    borderWidth: 2, borderColor: C.border,
+    borderWidth: 2, borderColor: C.cardBorder,
     alignItems: "center", justifyContent: "center",
   },
-  simRadioSelected: { borderColor: C.forestGreen },
-  simRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.forestGreen },
+  simRadioSelected: { borderColor: C.green },
+  simRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.green },
   simEmpty: {
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 14, padding: 20, marginBottom: 20, alignItems: "center",
   },
   simEmptyText: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },
 
   // How it works
   howCard: {
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: C.border,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 14, padding: 16, marginBottom: 20,
   },
   howRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 6 },
   howIcon: { fontSize: 16 },
-  howText: { fontSize: 13, color: C.offWhite, flex: 1, lineHeight: 20 },
+  howText: { fontSize: 13, color: C.body, flex: 1, lineHeight: 20 },
 
   // Error
   error: { fontSize: 13, color: C.error, marginBottom: 14, textAlign: "center" },
 
   // Activate button
   activateBtn: {
-    backgroundColor: C.forestGreen, paddingVertical: 17,
+    backgroundColor: C.green, paddingVertical: 17,
     borderRadius: 14, alignItems: "center", marginBottom: 24,
-    borderWidth: 1, borderColor: C.midGreen,
   },
-  activateBtnPressed: { backgroundColor: C.midGreen },
+  activateBtnPressed: { backgroundColor: C.greenDark },
   activateBtnDisabled: { opacity: 0.7 },
-  activateBtnText: { fontSize: 16, fontWeight: "700", color: C.white, letterSpacing: 0.5 },
+  activateBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", letterSpacing: 0.5 },
 
   domain: { fontSize: 12, color: C.muted, textAlign: "center", letterSpacing: 1.2 },
 });

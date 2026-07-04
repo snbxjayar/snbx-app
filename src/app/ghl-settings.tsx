@@ -3,25 +3,12 @@
 
 import {
   View, Text, StyleSheet, StatusBar, Pressable,
-  ScrollView, TextInput, ActivityIndicator, Alert,
+  ScrollView, TextInput, ActivityIndicator,
 } from "react-native";
 import { useState, useEffect } from "react";
 import { router } from "expo-router";
 import { saveGHLCredentials, loadGHLCredentials, GHLCredentials } from "../hooks/useGHL";
-
-const C = {
-  forestGreen: "#1D9E75",
-  darkGreen:   "#1B3A2D",
-  midGreen:    "#0F6E56",
-  navy:        "#0D1B2A",
-  navyCard:    "#0F2030",
-  white:       "#FFFFFF",
-  offWhite:    "#F0F5F2",
-  muted:       "#7A9E8E",
-  border:      "#1A3A2A",
-  error:       "#E05A5A",
-  inputBg:     "#0F2030",
-};
+import { C } from "../theme";
 
 export default function GHLSettingsScreen() {
   const [locationId, setLocationId] = useState("");
@@ -64,14 +51,14 @@ export default function GHLSettingsScreen() {
   if (loading) {
     return (
       <View style={s.loadingRoot}>
-        <ActivityIndicator color={C.forestGreen} size="large" />
+        <ActivityIndicator color={C.green} size="large" />
       </View>
     );
   }
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.navy} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.back}>
@@ -97,7 +84,7 @@ export default function GHLSettingsScreen() {
         <Text style={s.hint}>Found in GHL → Settings → Business Profile</Text>
         <TextInput
           style={s.input}
-          placeholder="e.g. fBmHS43QUr0H51dHbiqr"
+          placeholder="e.g. aBcDeF1234567890xyz"
           placeholderTextColor={C.muted}
           autoCapitalize="none"
           autoCorrect={false}
@@ -151,7 +138,7 @@ export default function GHLSettingsScreen() {
           disabled={saving}
         >
           {saving
-            ? <ActivityIndicator color={C.white} size="small" />
+            ? <ActivityIndicator color="#FFFFFF" size="small" />
             : <Text style={s.saveBtnText}>Save Credentials</Text>
           }
         </Pressable>
@@ -163,63 +150,62 @@ export default function GHLSettingsScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.navy },
-  loadingRoot: { flex: 1, backgroundColor: C.navy, alignItems: "center", justifyContent: "center" },
+  root: { flex: 1, backgroundColor: C.bg },
+  loadingRoot: { flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" },
   scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 48 },
 
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
-    borderBottomWidth: 0.5, borderBottomColor: "#1A3A2A",
+    borderBottomWidth: 1, borderBottomColor: C.cardBorder,
   },
   back: { padding: 4 },
   backText: { fontSize: 22, color: C.muted },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: C.white },
+  headerTitle: { fontSize: 17, fontWeight: "800", color: C.ink },
 
   infoBox: {
-    flexDirection: "row", gap: 10, backgroundColor: "rgba(29,158,117,0.07)",
-    borderWidth: 0.5, borderColor: "rgba(29,158,117,0.3)",
+    flexDirection: "row", gap: 10, backgroundColor: C.greenSoft,
+    borderWidth: 1, borderColor: "#CBEADF",
     borderRadius: 12, padding: 14, marginTop: 16, marginBottom: 20,
   },
   infoIcon: { fontSize: 16 },
-  infoText: { fontSize: 13, color: C.offWhite, flex: 1, lineHeight: 20 },
+  infoText: { fontSize: 13, color: C.body, flex: 1, lineHeight: 20 },
 
-  label: { fontSize: 13, fontWeight: "600", color: C.offWhite, marginBottom: 4 },
+  label: { fontSize: 13, fontWeight: "600", color: C.ink, marginBottom: 4 },
   hint: { fontSize: 12, color: C.muted, marginBottom: 8 },
   input: {
-    backgroundColor: C.inputBg, borderWidth: 0.5, borderColor: "#1A3A2A",
+    backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
-    fontSize: 14, color: C.white, marginBottom: 20,
+    fontSize: 14, color: C.ink, marginBottom: 20,
   },
 
   howCard: {
-    backgroundColor: C.navyCard, borderWidth: 0.5, borderColor: "#1A3A2A",
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 14, padding: 16, marginBottom: 20,
   },
-  howTitle: { fontSize: 13, fontWeight: "700", color: C.white, marginBottom: 12 },
+  howTitle: { fontSize: 13, fontWeight: "700", color: C.ink, marginBottom: 12 },
   howRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 10 },
   howNum: {
     width: 20, height: 20, borderRadius: 10,
-    backgroundColor: "rgba(29,158,117,0.15)", alignItems: "center", justifyContent: "center",
+    backgroundColor: C.greenSoft, alignItems: "center", justifyContent: "center",
   },
-  howNumText: { fontSize: 11, fontWeight: "700", color: C.forestGreen },
-  howText: { fontSize: 13, color: C.offWhite, flex: 1, lineHeight: 20 },
+  howNumText: { fontSize: 11, fontWeight: "700", color: C.greenDark },
+  howText: { fontSize: 13, color: C.body, flex: 1, lineHeight: 20 },
 
   error: { fontSize: 13, color: C.error, marginBottom: 12 },
   successBox: {
-    backgroundColor: "rgba(29,158,117,0.1)", borderWidth: 0.5,
-    borderColor: "rgba(29,158,117,0.3)", borderRadius: 10,
+    backgroundColor: C.greenSoft, borderWidth: 1,
+    borderColor: "rgba(29,158,117,0.35)", borderRadius: 10,
     padding: 12, marginBottom: 12, alignItems: "center",
   },
-  successText: { fontSize: 13, color: C.forestGreen, fontWeight: "600" },
+  successText: { fontSize: 13, color: C.greenDark, fontWeight: "600" },
 
   saveBtn: {
-    backgroundColor: C.forestGreen, paddingVertical: 16,
+    backgroundColor: C.green, paddingVertical: 16,
     borderRadius: 14, alignItems: "center", marginBottom: 20,
-    borderWidth: 1, borderColor: C.midGreen,
   },
-  saveBtnPressed: { backgroundColor: C.midGreen },
+  saveBtnPressed: { backgroundColor: C.greenDark },
   saveBtnDisabled: { opacity: 0.7 },
-  saveBtnText: { fontSize: 16, fontWeight: "700", color: C.white },
+  saveBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
   domain: { fontSize: 12, color: C.muted, textAlign: "center", letterSpacing: 1.2 },
 });
