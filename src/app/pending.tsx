@@ -3,7 +3,7 @@
 
 import {
   View, Text, StyleSheet, StatusBar, Pressable,
-  ScrollView, Animated, Easing,
+  ScrollView, Animated, Easing, Image,
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -116,8 +116,8 @@ export default function PendingScreen() {
           {/* Header */}
           <View style={s.header}>
             <View style={s.logoMark}>
-              <Text style={s.logoMarkText}>S</Text>
-            </View>
+  <Text style={s.logoMarkText}>S</Text>
+</View>
             <Text style={s.brand}>SNBX PRO</Text>
           </View>
 
@@ -205,11 +205,7 @@ const s = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 48 },
 
   header: { alignItems: "center", marginBottom: 24 },
-  logoMark: {
-    width: 52, height: 52, borderRadius: 16,
-    backgroundColor: C.green, alignItems: "center",
-    justifyContent: "center", marginBottom: 10,
-  },
+  logoMark: { width: 36, height: 36 },
   logoMarkText: { fontSize: 26, fontWeight: "800", color: "#FFFFFF" },
   brand: { fontSize: 13, fontWeight: "700", color: C.gold, letterSpacing: 6 },
 

@@ -43,9 +43,11 @@ export default function HomeScreen() {
 
       {/* Header */}
       <View style={s.header}>
-        <View style={s.logoBadge}>
-          <Text style={s.logoBadgeText}>S</Text>
-        </View>
+        <Image
+          source={require("../../assets/images/snbx-logo.png")}
+          style={s.logoBadge}
+          resizeMode="contain"
+        />
         <Text style={s.logoText}>SNBX Pro</Text>
       </View>
 
@@ -117,10 +119,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: C.cardBorder,
     backgroundColor: C.bg,
   },
-  logoBadge: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: C.greenDark, alignItems: "center", justifyContent: "center",
-  },
+  logoBadge: { width: 34, height: 34 },
   logoBadgeText: { color: "#FFFFFF", fontWeight: "800", fontSize: 16 },
   logoText: { fontSize: 19, fontWeight: "800", color: C.green },
 

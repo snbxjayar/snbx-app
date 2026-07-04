@@ -4,7 +4,7 @@
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   StatusBar, Animated, Easing, KeyboardAvoidingView,
-  Platform, ActivityIndicator, Dimensions,
+  Platform, ActivityIndicator, Dimensions, Image,
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -103,9 +103,11 @@ export default function LoginScreen() {
           </Pressable>
 
           {/* Logo */}
-          <View style={s.logoMark}>
-            <Text style={s.logoMarkText}>S</Text>
-          </View>
+          <Image
+  source={require("../../assets/images/snbx-logo.png")}
+  style={s.logoMark}
+  resizeMode="contain"
+/>
 
           {/* Header */}
           <Text style={s.title}>Welcome back</Text>
@@ -187,12 +189,7 @@ const s = StyleSheet.create({
   backText: { fontSize: 14, color: C.muted, fontWeight: "500" },
 
   // Logo
-  logoMark: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: C.green,
-    alignItems: "center", justifyContent: "center",
-    marginBottom: 20,
-  },
+  logoMark: { width: 36, height: 36 },
   logoMarkText: { fontSize: 24, fontWeight: "800", color: "#FFFFFF" },
 
   // Header

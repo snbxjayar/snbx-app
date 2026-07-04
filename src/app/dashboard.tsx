@@ -3,7 +3,7 @@
 import {
   View, Text, StyleSheet, StatusBar, Pressable,
   ScrollView, ActivityIndicator, RefreshControl,
-  NativeModules, Platform,
+  NativeModules, Platform, Image,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import { router } from "expo-router";
@@ -59,9 +59,11 @@ function ProfileCard({ user, name }: { user: User; name: string }) {
           <Text style={st.activeText}>Active Member</Text>
         </View>
       </View>
-      <View style={st.logoMark}>
-        <Text style={st.logoMarkText}>S</Text>
-      </View>
+      <Image
+        source={require("../../assets/images/snbx-logo.png")}
+        style={st.logoMark}
+        resizeMode="contain"
+      />
     </View>
   );
 }
@@ -334,11 +336,7 @@ const st = StyleSheet.create({
   activeBadge: { flexDirection: "row", alignItems: "center", gap: 5 },
   activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.green },
   activeText: { fontSize: 11, color: C.greenDark, fontWeight: "600" },
-  logoMark: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: C.green, alignItems: "center",
-    justifyContent: "center",
-  },
+  logoMark: { width: 36, height: 36 },
   logoMarkText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
 
   errorBox: {
