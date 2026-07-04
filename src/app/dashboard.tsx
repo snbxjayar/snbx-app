@@ -274,8 +274,13 @@ export default function DashboardScreen() {
         <ToolCard
           icon="📊" label="GHL Dashboard"
           desc="Your sub-account overview"
-          onPress={() => router.push("/gateway-setup" as any)}
+          onPress={() => router.push("/ghl-hub" as any)}
         />
+        <ToolCard
+  icon="📱" label="SMS Gateway"
+  desc="Manage your SIM gateway settings"
+  onPress={() => router.push("/gateway-setup" as any)}
+/>
         <ToolCard
           icon="🛡️" label="AXA Insurance"
           desc="Policy & documents"

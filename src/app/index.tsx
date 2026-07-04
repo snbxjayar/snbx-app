@@ -106,7 +106,7 @@ export default function HomeScreen() {
           <View style={s.divider} />
 
           {/* Tagline */}
-          <Text style={s.tagline}>The Sandbox for{"\n"}Filipino Digital Pros</Text>
+          <Text style={s.tagline}>The Sandbox for{"\n"}Filipino Digital Pros ✨</Text>
 
           {/* Three pillars */}
           <View style={s.pillars}>

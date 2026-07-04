@@ -4,8 +4,10 @@
 // This Expo config plugin injects our SMS Gateway service and receiver
 // declarations into AndroidManifest.xml on EVERY prebuild automatically.
 // This means they can NEVER be wiped by prebuild again.
+//
+// v2: Adds SmsFcmService (FCM wake-up) + Gradle deps (firebase-messaging, WorkManager)
 
-const { withAndroidManifest } = require("@expo/config-plugins");
+const { withAndroidManifest, withAppBuildGradle } = require("@expo/config-plugins");
 
 function addSmsGatewayToManifest(androidManifest) {
   const { manifest } = androidManifest;
@@ -28,6 +30,9 @@ function addSmsGatewayToManifest(androidManifest) {
   const receiverExists = application.receiver.some(
     (r) => r.$?.["android:name"] === ".sms.SmsReceiver"
   );
+  const fcmServiceExists = application.service.some(
+    (s) => s.$?.["android:name"] === ".sms.SmsFcmService"
+  );
 
   // ── Add GatewayService ────────────────────────────────────────────────────
   if (!serviceExists) {
@@ -40,6 +45,25 @@ function addSmsGatewayToManifest(androidManifest) {
       },
     });
     console.log("withSmsGateway: Added GatewayService to manifest");
+  }
+
+  // ── Add SmsFcmService (FCM wake-up channel) ───────────────────────────────
+  if (!fcmServiceExists) {
+    application.service.push({
+      $: {
+        "android:name": ".sms.SmsFcmService",
+        "android:enabled": "true",
+        "android:exported": "false",
+      },
+      "intent-filter": [
+        {
+          action: [
+            { $: { "android:name": "com.google.firebase.MESSAGING_EVENT" } },
+          ],
+        },
+      ],
+    });
+    console.log("withSmsGateway: Added SmsFcmService to manifest");
   }
 
   // ── Add SmsReceiver (incoming SMS) ────────────────────────────────────────
@@ -112,9 +136,39 @@ function addSmsGatewayToManifest(androidManifest) {
   return androidManifest;
 }
 
+// ── Inject Gradle dependencies (survive prebuild too) ───────────────────────
+function addGradleDependencies(gradleContents) {
+  const deps = [
+    'implementation("com.google.firebase:firebase-messaging")',
+    'implementation("androidx.work:work-runtime-ktx:2.9.0")',
+  ];
+
+  let updated = gradleContents;
+
+  for (const dep of deps) {
+    if (!updated.includes(dep)) {
+      // Insert right after the dependencies { line
+      updated = updated.replace(
+        /dependencies\s*\{/,
+        (match) => `${match}\n    ${dep}`
+      );
+      console.log(`withSmsGateway: Added Gradle dep ${dep}`);
+    }
+  }
+
+  return updated;
+}
+
 module.exports = function withSmsGateway(config) {
-  return withAndroidManifest(config, (config) => {
+  config = withAndroidManifest(config, (config) => {
     config.modResults = addSmsGatewayToManifest(config.modResults);
     return config;
   });
+
+  config = withAppBuildGradle(config, (config) => {
+    config.modResults.contents = addGradleDependencies(config.modResults.contents);
+    return config;
+  });
+
+  return config;
 };

@@ -1,5 +1,4 @@
 // android/app/src/main/java/com/snbxjayar/snbxapp/sms/GatewayService.kt
-
 package com.snbxjayar.snbxapp.sms
 
 import android.app.*
@@ -9,10 +8,15 @@ import android.os.IBinder
 import android.telephony.SmsManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.messaging.FirebaseMessaging
 import java.util.Date
+import java.util.concurrent.TimeUnit
 
 class GatewayService : Service() {
 
@@ -31,6 +35,8 @@ class GatewayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIF_ID, buildNotification())
         startListening()
+        subscribeToFcmTopic()
+        scheduleWatchdog()
         Log.d("SNBXGateway", "Gateway service started")
         return START_STICKY // Restart if killed by Android
     }
@@ -41,6 +47,26 @@ class GatewayService : Service() {
         firestoreListener?.remove()
         Log.d("SNBXGateway", "Gateway service stopped")
         super.onDestroy()
+    }
+
+    // ── FCM wake-up channel ───────────────────────────────────────────────────
+    private fun subscribeToFcmTopic() {
+        FirebaseMessaging.getInstance().subscribeToTopic("sms_gateway")
+            .addOnCompleteListener { task ->
+                Log.d("SNBXGateway", "FCM topic subscribe: ${if (task.isSuccessful) "OK" else "FAILED"}")
+            }
+    }
+
+    // ── Watchdog: restart service every 15 min if killed ─────────────────────
+    private fun scheduleWatchdog() {
+        val request = PeriodicWorkRequestBuilder<GatewayWatchdogWorker>(15, TimeUnit.MINUTES)
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "snbx_gateway_watchdog",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+        Log.d("SNBXGateway", "Watchdog scheduled")
     }
 
     // ── Listen for outgoing SMS jobs in Firestore ─────────────────────────────
@@ -57,17 +83,17 @@ class GatewayService : Service() {
 
                 snapshots?.documentChanges?.forEach { change ->
                     if (change.type != com.google.firebase.firestore.DocumentChange.Type.ADDED) return@forEach
-                                    val doc  = change.document
-                                    val data = doc.data
-                                    val to   = data["to"] as? String ?: return@forEach
-                                    val body = data["body"] as? String ?: return@forEach
-                                    val jobId = doc.id
+                    val doc  = change.document
+                    val data = doc.data
+                    val to   = data["to"] as? String ?: return@forEach
+                    val body = data["body"] as? String ?: return@forEach
+                    val jobId = doc.id
 
-                                    Log.d("SNBXGateway", "Processing job $jobId → $to")
-                                    processJob(jobId, to, body)
-                                }
-                            }
-                    }
+                    Log.d("SNBXGateway", "Processing job $jobId → $to")
+                    processJob(jobId, to, body)
+                }
+            }
+    }
 
     // ── Process a single SMS job ──────────────────────────────────────────────
     private fun processJob(jobId: String, to: String, body: String) {

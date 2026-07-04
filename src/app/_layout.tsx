@@ -11,6 +11,9 @@ export default function RootLayout() {
       <Stack.Screen name="signup" />
 <Stack.Screen name="pending" />
 <Stack.Screen name="admin" />
+<Stack.Screen name="ghl-hub" />
+<Stack.Screen name="ghl-settings" />
+<Stack.Screen name="ghl-contacts" />
 <Stack.Screen name="gateway-setup" />
     </Stack>
   );
