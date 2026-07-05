@@ -1,9 +1,13 @@
 // src/app/index.tsx
 // SNBX Pro — Home / Landing screen (matches snbxpro.com branding)
-
 import {
   View, Text, StyleSheet, StatusBar, Pressable, ScrollView, Image,
+  ActivityIndicator,
 } from "react-native";
+import { useState, useEffect } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 import { router } from "expo-router";
 
 const C = {
@@ -37,6 +41,36 @@ const PILLARS = [
 ];
 
 export default function HomeScreen() {
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) { setChecking(false); return; }
+      try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        const status = snap.exists() ? snap.data().status : "pending";
+        if (status === "approved") {
+          router.replace("/dashboard" as any);
+        } else if (status === "rejected") {
+          router.replace("/rejected" as any);
+        } else {
+          router.replace("/pending" as any);
+        }
+      } catch {
+        setChecking(false); // On error, just show the landing page
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  if (checking) {
+    return (
+      <View style={s.checkingRoot}>
+        <ActivityIndicator color={C.green} size="large" />
+      </View>
+    );
+  }
+
   return (
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
@@ -111,6 +145,8 @@ export default function HomeScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
+    checkingRoot: { flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" },
+
 
   // Header
   header: {

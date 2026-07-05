@@ -1,5 +1,5 @@
 // src/app/dashboard.tsx
-
+import SetupChecklist from "../components/SetupChecklist";
 import {
   View, Text, StyleSheet, StatusBar, Pressable,
   ScrollView, ActivityIndicator, RefreshControl,
@@ -160,6 +160,15 @@ export default function DashboardScreen() {
       setUser(u);
       setAuthReady(true);
 
+      // First-visit welcome carousel
+      try {
+        const userSnap = await getDoc(doc(db, "users", u.uid));
+        if (userSnap.exists() && userSnap.data().welcomeSeen !== true) {
+          router.replace("/welcome" as any);
+          return;
+        }
+      } catch {}
+
       // Auto-restart gateway if it was previously active
       if (Platform.OS === "android" && SNBXSmsModule) {
         try {
@@ -221,6 +230,9 @@ export default function DashboardScreen() {
         {/* Profile */}
         {user && <ProfileCard user={user} name={profile?.name ?? ""} />}
 
+        {/* Onboarding checklist (auto-hides when complete + dismissed) */}
+        {user && <SetupChecklist uid={user.uid} />}
+
         {/* Error */}
         {error && (
           <View style={st.errorBox}>
@@ -269,7 +281,7 @@ export default function DashboardScreen() {
           onPress={() => router.push("/gateway-setup" as any)}
         />
         <ToolCard
-          icon="🛡️" label="AXA Insurance"
+          icon="🛡️" label="Insurance & Financial"
           desc="Policy & documents"
           onPress={() => console.log("AXA — coming soon")}
         />
