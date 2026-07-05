@@ -2,7 +2,7 @@
 // Place at: snbx-app/src/app/rejected.tsx
 
 import {
-  View, Text, StyleSheet, StatusBar, Pressable,
+  View, Text, StyleSheet, StatusBar, Pressable, Image,
 } from "react-native";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
@@ -23,9 +23,11 @@ export default function RejectedScreen() {
 
       <View style={s.content}>
         {/* Logo */}
-        <View style={s.logoMark}>
-          <Text style={s.logoMarkText}>S</Text>
-        </View>
+        <Image
+          source={require("../../assets/images/snbx-logo.png")}
+          style={s.logoMark}
+          resizeMode="contain"
+        />
 
         <Text style={s.icon}>🙁</Text>
         <Text style={s.title}>Account Not Approved</Text>
@@ -64,11 +66,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 28,
   },
 
-  logoMark: {
-    width: 52, height: 52, borderRadius: 16,
-    backgroundColor: C.green, alignItems: "center",
-    justifyContent: "center", marginBottom: 28,
-  },
+  logoMark: { width: 52, height: 52, marginBottom: 28 },
   logoMarkText: { fontSize: 26, fontWeight: "800", color: "#FFFFFF" },
 
   icon: { fontSize: 44, marginBottom: 16 },

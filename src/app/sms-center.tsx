@@ -9,11 +9,10 @@ import {
 import { useState, useEffect } from "react";
 import {
   collection, query, orderBy, onSnapshot,
-  addDoc, serverTimestamp, where,
+  addDoc, serverTimestamp, where, doc, getDoc,
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { router } from "expo-router";
-import * as Application from "expo-application";
 import { C } from "../theme";
 
 const EXTRA = {
@@ -28,7 +27,7 @@ type SmsJob = {
   body: string;
   status: string;
   createdAt: any;
-  source: "gateway" | "outgoing";
+  source: "gateway" | "outgoing" | "ghl";
 };
 
 function formatTime(ts: any): string {
@@ -68,7 +67,9 @@ function statusIcon(status: string): string {
 }
 
 // ── Compose Modal ─────────────────────────────────────────────────────────────
-function ComposeSheet({ onClose, onSent }: { onClose: () => void; onSent: () => void }) {
+function ComposeSheet({
+  deviceId, onClose, onSent,
+}: { deviceId: string | null; onClose: () => void; onSent: () => void }) {
   const [phone, setPhone]     = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -79,18 +80,18 @@ function ComposeSheet({ onClose, onSent }: { onClose: () => void; onSent: () => 
       setError("Please enter a phone number and message.");
       return;
     }
+    if (!deviceId) {
+      setError("No gateway device linked yet. Activate your gateway first.");
+      return;
+    }
     setSending(true);
     setError("");
     try {
-      // Stamp this device's ID so the gateway's filtered listener picks it up
-      const deviceId =
-        Platform.OS === "android" ? Application.getAndroidId() : null;
-
-      // Write to sms_jobs — GatewayService picks this up and sends via SIM
+      // Write to sms_jobs — the gateway with this deviceId picks it up
       await addDoc(collection(db, "sms_jobs"), {
         to:        phone.trim(),
         body:      message.trim(),
-        deviceId:  deviceId ?? "",
+        deviceId,
         status:    "queued",
         createdAt: serverTimestamp(),
         userId:    auth.currentUser?.uid ?? "",
@@ -156,30 +157,53 @@ function ComposeSheet({ onClose, onSent }: { onClose: () => void; onSent: () => 
 
 // ── Main SMS Center ───────────────────────────────────────────────────────────
 export default function SmsCenterScreen() {
-  const [tab, setTab]             = useState<"inbox" | "sent" | "all">("inbox");
+  const [tab, setTab]             = useState<"inbox" | "sent">("inbox");
   const [messages, setMessages]   = useState<SmsJob[]>([]);
   const [loading, setLoading]     = useState(true);
   const [composing, setComposing] = useState(false);
   const [refresh, setRefresh]     = useState(0);
+  const [deviceId, setDeviceId]   = useState<string | null>(null);
+  const [deviceLoading, setDeviceLoading] = useState(true);
+
+  // Resolve this user's gateway deviceId from their gateway_status doc.
+  // This works even when browsing from a different phone than the gateway.
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) { setDeviceLoading(false); return; }
+    getDoc(doc(db, "gateway_status", uid))
+      .then((snap) => {
+        setDeviceId(snap.exists() ? (snap.data().deviceId ?? null) : null);
+      })
+      .catch(() => {})
+      .finally(() => setDeviceLoading(false));
+  }, []);
 
   useEffect(() => {
+    if (deviceLoading) return;
+
+    // No linked device yet → nothing to show, skip querying
+    if (!deviceId) {
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     let q;
 
     if (tab === "inbox") {
+      // Only messages received by THIS user's gateway device
       q = query(
         collection(db, "sms_inbox"),
-        orderBy("createdAt", "desc")
-      );
-    } else if (tab === "sent") {
-      q = query(
-        collection(db, "sms_jobs"),
-        where("userId", "==", auth.currentUser?.uid ?? ""),
+        where("deviceId", "==", deviceId),
         orderBy("createdAt", "desc")
       );
     } else {
+      // Only jobs sent through THIS user's gateway device
+      // (covers both app-composed and GHL-originated sends)
       q = query(
         collection(db, "sms_jobs"),
+        where("deviceId", "==", deviceId),
         orderBy("createdAt", "desc")
       );
     }
@@ -190,12 +214,16 @@ export default function SmsCenterScreen() {
       setMessages(msgs);
       setLoading(false);
     }, (err) => {
+      if (err.code === "permission-denied" && !auth.currentUser) {
+        console.log("SMS listener ended by sign-out (ignored)");
+        return;
+      }
       console.error("SMS listener error:", err);
       setLoading(false);
     });
 
     return () => unsub();
-  }, [tab, refresh]);
+  }, [tab, refresh, deviceId, deviceLoading]);
 
   return (
     <View style={s.root}>
@@ -214,7 +242,7 @@ export default function SmsCenterScreen() {
 
       {/* Tabs */}
       <View style={s.tabs}>
-        {(["inbox", "sent", "all"] as const).map((t) => (
+        {(["inbox", "sent"] as const).map((t) => (
           <Pressable
             key={t}
             style={[s.tab, tab === t && s.tabActive]}
@@ -228,9 +256,23 @@ export default function SmsCenterScreen() {
       </View>
 
       {/* Messages */}
-      {loading ? (
+      {loading || deviceLoading ? (
         <View style={s.center}>
           <ActivityIndicator color={C.green} size="large" />
+        </View>
+      ) : !deviceId ? (
+        <View style={s.center}>
+          <Text style={s.emptyIcon}>📱</Text>
+          <Text style={s.emptyText}>
+            No gateway linked yet.{"\n"}Activate your SMS Gateway first to start
+            sending and receiving.
+          </Text>
+          <Pressable
+            style={s.gatewayBtn}
+            onPress={() => router.push("/gateway-setup" as any)}
+          >
+            <Text style={s.gatewayBtnText}>Go to Gateway Setup</Text>
+          </Pressable>
         </View>
       ) : messages.length === 0 ? (
         <View style={s.center}>
@@ -251,7 +293,7 @@ export default function SmsCenterScreen() {
             <View style={[
               s.msgCard,
               item.source === "gateway" && { borderLeftColor: EXTRA.received, borderLeftWidth: 3 },
-              item.source === "outgoing" && { borderLeftColor: EXTRA.sent, borderLeftWidth: 3 },
+              item.source !== "gateway" && { borderLeftColor: EXTRA.sent, borderLeftWidth: 3 },
             ]}>
               <View style={s.msgHeader}>
                 <View style={s.msgMeta}>
@@ -263,7 +305,7 @@ export default function SmsCenterScreen() {
                   </Text>
                 </View>
                 <View style={s.msgRight}>
-                  {item.source === "outgoing" && (
+                  {item.source !== "gateway" && (
                     <Text style={[s.msgStatus, { color: statusColor(item.status) }]}>
                       {statusIcon(item.status)} {item.status}
                     </Text>
@@ -285,6 +327,7 @@ export default function SmsCenterScreen() {
         >
           <Pressable style={s.overlayBg} onPress={() => setComposing(false)} />
           <ComposeSheet
+            deviceId={deviceId}
             onClose={() => setComposing(false)}
             onSent={() => { setTab("sent"); setRefresh((r) => r + 1); }}
           />
@@ -331,6 +374,11 @@ const s = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   emptyIcon: { fontSize: 40, marginBottom: 14 },
   emptyText: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },
+  gatewayBtn: {
+    backgroundColor: C.green, paddingHorizontal: 24,
+    paddingVertical: 12, borderRadius: 12, marginTop: 18,
+  },
+  gatewayBtnText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF" },
 
   // Message card
   msgCard: {

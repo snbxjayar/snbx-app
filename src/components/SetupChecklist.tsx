@@ -55,18 +55,13 @@ export default function SetupChecklist({ uid }: Props) {
     const deviceId = Platform.OS === "android" ? Application.getAndroidId() : null;
     const messageText = `Hi SNBX Team! Here's my Device ID for SMS setup: ${deviceId ?? "(open Gateway Setup to find it)"}`;
 
-    // Clipboard backup in case Messenger drops the prefill
     await Clipboard.setStringAsync(messageText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
 
     try {
       await setDoc(doc(db, "users", uid), { deviceIdSent: true }, { merge: true });
-      const url = `https://m.me/snbxpro?text=${encodeURIComponent(messageText)}`;
-      await Linking.openURL(url);
-    } catch {
-      // Messenger not available — clipboard still has the message
-    }
+    } catch {}
   };
 
   const handleDismiss = async () => {
@@ -79,7 +74,7 @@ export default function SetupChecklist({ uid }: Props) {
     { done: true,          label: "Account approved" },
     { done: permsGranted,  label: "SMS permissions granted",   action: () => router.push("/gateway-setup" as any), actionLabel: "Go" },
     { done: gatewayActive, label: "Activate your gateway",     action: () => router.push("/gateway-setup" as any), actionLabel: "Go" },
-    { done: deviceIdSent,  label: "Send your Device ID to SNBX", action: handleSendDeviceId, actionLabel: copied ? "✓ Copied!" : "Copy & Message" },
+    { done: deviceIdSent,  label: "Send your Device ID to SNBX", action: handleSendDeviceId, actionLabel: copied ? "✓ Copied!" : "Copy ID" },
   ];
 
   const doneCount = steps.filter((st) => st.done).length;

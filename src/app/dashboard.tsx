@@ -41,14 +41,17 @@ function chessProgress(level: string): number {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-function ProfileCard({ user, name }: { user: User; name: string }) {
+function ProfileCard({ user, name, avatarColor }: { user: User; name: string; avatarColor?: string }) {
   const initials = name
     ? name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
     : (user.email?.[0] ?? "S").toUpperCase();
 
   return (
-    <View style={st.profileCard}>
-      <View style={st.avatar}>
+    <Pressable
+      style={({ pressed }) => [st.profileCard, pressed && { opacity: 0.85 }]}
+      onPress={() => router.push("/edit-profile" as any)}
+    >
+      <View style={[st.avatar, { backgroundColor: avatarColor || C.green }]}>
         <Text style={st.avatarText}>{initials}</Text>
       </View>
       <View style={st.profileInfo}>
@@ -56,7 +59,7 @@ function ProfileCard({ user, name }: { user: User; name: string }) {
         <Text style={st.profileEmail}>{user.email}</Text>
         <View style={st.activeBadge}>
           <View style={st.activeDot} />
-          <Text style={st.activeText}>Active Member</Text>
+          <Text style={st.activeText}>Active Member · Tap to edit</Text>
         </View>
       </View>
       <Image
@@ -64,7 +67,7 @@ function ProfileCard({ user, name }: { user: User; name: string }) {
         style={st.logoMark}
         resizeMode="contain"
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -228,7 +231,7 @@ export default function DashboardScreen() {
         }
       >
         {/* Profile */}
-        {user && <ProfileCard user={user} name={profile?.name ?? ""} />}
+        {user && <ProfileCard user={user} name={profile?.name ?? ""} avatarColor={profile?.avatarColor} />}
 
         {/* Onboarding checklist (auto-hides when complete + dismissed) */}
         {user && <SetupChecklist uid={user.uid} />}
@@ -266,8 +269,8 @@ export default function DashboardScreen() {
           onPress={() => router.push("/sms-center" as any)}
         />
         <ToolCard
-          icon="💳" label="Payments"
-          desc="GCash · Maya · Card"
+          icon="💳" label="Upgrade Plan"
+          desc="View plans & upgrade your subscription"
           onPress={() => router.push("/payments" as any)}
         />
         <ToolCard
@@ -286,9 +289,9 @@ export default function DashboardScreen() {
           onPress={() => console.log("AXA — coming soon")}
         />
         <ToolCard
-          icon="♟" label="Chess Progress"
-          desc="Track your SNBX level"
-          onPress={() => console.log("Chess — coming soon")}
+          icon="♟" label="SNBX Ranking"
+          desc="Track your level from Pawn to Master"
+          onPress={() => router.push("/ranking" as any)}
         />
 
         {/* Coming soon */}

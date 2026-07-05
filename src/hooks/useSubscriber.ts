@@ -2,7 +2,7 @@
 // Place at: snbx-app/src/hooks/useSubscriber.ts
 
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../firebase";
 
 export type UserProfile = {
@@ -12,6 +12,7 @@ export type UserProfile = {
   ghlContactId: string;
   createdAt: any;
   isAdmin?: boolean;
+  avatarColor?: string;
 };
 
 export type Subscription = {
@@ -82,39 +83,34 @@ export function useSubscriber(firebaseUID: string | undefined): SubscriberData {
 
     let cancelled = false;
 
-    const load = async () => {
+    // Live listener on the user profile doc → reflects edits instantly
+    const unsubProfile = onSnapshot(
+      doc(db, "users", firebaseUID),
+      (snap) => {
+        if (cancelled) return;
+        setProfile(snap.exists() ? ({ id: snap.id, ...snap.data() } as UserProfile) : null);
+      },
+      (e: any) => {
+        if (e?.code === "permission-denied" && !auth.currentUser) return; // sign-out race
+        console.error("Profile listener error:", e);
+      }
+    );
+
+    // Subscriptions: one-time fetch (re-runs on refetch via tick)
+    const loadSubs = async () => {
       setLoading(true);
       setError(null);
       try {
-        // 1. Direct document lookup — fast, secure, no collection scan
-        const userRef  = doc(db, "users", firebaseUID);
-        const userSnap = await getDoc(userRef);
-        if (cancelled) return;
-
-        const userDoc: UserProfile | null = userSnap.exists()
-          ? ({ id: userSnap.id, ...userSnap.data() } as UserProfile)
-          : null;
-
-        setProfile(userDoc);
-
-        // 2. Query subscriptions where userId == this Firebase UID
         const subRef   = collection(db, "subscriptions");
         const subQuery = query(subRef, where("userId", "==", firebaseUID));
         const subSnap  = await getDocs(subQuery);
         if (cancelled) return;
-
         const subs: Subscription[] = [];
         subSnap.forEach((d) => subs.push({ id: d.id, ...d.data() } as Subscription));
         setSubscriptions(subs);
-
       } catch (e: any) {
         if (cancelled) return;
-        // If the user signed out mid-request, Firestore throws permission-denied.
-        // That's an expected race during logout — ignore it silently.
-        if (e?.code === "permission-denied" && !auth.currentUser) {
-          console.log("useSubscriber: request aborted by sign-out (ignored)");
-          return;
-        }
+        if (e?.code === "permission-denied" && !auth.currentUser) return;
         setError("Failed to load your data. Please try again.");
         console.error("Firestore error:", e);
       } finally {
@@ -122,9 +118,12 @@ export function useSubscriber(firebaseUID: string | undefined): SubscriberData {
       }
     };
 
-    load();
+    loadSubs();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      unsubProfile();
+    };
   }, [firebaseUID, tick]);
 
   return { profile, subscriptions, loading, error, refetch };

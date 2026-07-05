@@ -4,7 +4,7 @@
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   StatusBar, Animated, Easing, KeyboardAvoidingView,
-  Platform, ActivityIndicator, ScrollView,
+  Platform, ActivityIndicator, ScrollView, Image,
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -117,9 +117,11 @@ export default function SignupScreen() {
             </Pressable>
 
             {/* Logo */}
-            <View style={s.logoMark}>
-              <Text style={s.logoMarkText}>S</Text>
-            </View>
+           <Image
+              source={require("../../assets/images/snbx-logo.png")}
+              style={s.logoMark}
+              resizeMode="contain"
+            />
 
             {/* Header */}
             <Text style={s.title}>Create Account</Text>
@@ -213,11 +215,7 @@ const s = StyleSheet.create({
   back: { marginBottom: 24 },
   backText: { fontSize: 14, color: C.muted, fontWeight: "500" },
 
-  logoMark: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: C.green, alignItems: "center",
-    justifyContent: "center", marginBottom: 20,
-  },
+  logoMark: { width: 48, height: 48, marginBottom: 20 },
   logoMarkText: { fontSize: 24, fontWeight: "800", color: "#FFFFFF" },
 
   title: { fontSize: 26, fontWeight: "800", color: C.ink, marginBottom: 6 },

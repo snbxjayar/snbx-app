@@ -3,17 +3,63 @@
 
 import {
   View, Text, StyleSheet, StatusBar, Pressable,
-  ScrollView, ActivityIndicator, Linking, Alert,
+  ScrollView, ActivityIndicator, Linking, Modal,
 } from "react-native";
 import { useState } from "react";
 import { auth } from "../firebase";
 import { router } from "expo-router";
-import { usePayments, PLAN_PRICES, PLAN_FEATURES, PaymentRecord } from "../hooks/usePayments";
+import { usePayments, PaymentRecord } from "../hooks/usePayments";
 import { C } from "../theme";
 
 const PAYMENT_API_URL = "https://snbx-pay.vercel.app/api/create-checkout";
 
-type Tab = "upgrade" | "load" | "history";
+type Tab = "upgrade" | "history";
+
+// ── SNBX Pro plans ──────────────────────────────────────────────
+const PLANS = [
+  {
+    id: "monthly",
+    name: "Monthly",
+    price: 999,
+    period: "/month",
+    effective: "₱999/month",
+    highlight: null as string | null,
+    features: [
+      "Your own GHL sub-account",
+      "SNBX SMS (your own SIM, ₱0 per text)",
+      "SNBX Pay (GCash · Maya · Card)",
+      "Team Paangat community + support",
+    ],
+  },
+  {
+    id: "6months",
+    name: "6 Months",
+    price: 4999,
+    period: "/6 months",
+    effective: "₱833/month",
+    highlight: "1 MONTH FREE",
+    features: [
+      "Everything in Monthly",
+      "Save ₱995 vs monthly",
+      "Locked-in price for 6 months",
+      "Priority onboarding",
+    ],
+  },
+  {
+    id: "annual",
+    name: "1 Year",
+    price: 7999,
+    period: "/year",
+    effective: "₱667/month",
+    highlight: "BEST DEAL · 4 MONTHS FREE",
+    features: [
+      "Everything in 6 Months",
+      "Save ₱3,989 vs monthly",
+      "Best price per month",
+      "1-on-1 onboarding session",
+    ],
+  },
+];
 
 function formatPeso(n: number): string {
   return `₱${n.toLocaleString("en-PH")}`;
@@ -35,31 +81,33 @@ function statusColor(status: string): string {
   }
 }
 
-// ── Plan Upgrade Card ─────────────────────────────────────────────────────────
+// ── Plan Card ────────────────────────────────────────────────────
 function PlanCard({
-  plan, currentPlan, onSelect, processing,
+  plan, onSelect, processing,
 }: {
-  plan: string; currentPlan: string; onSelect: (plan: string) => void; processing: boolean;
+  plan: typeof PLANS[number];
+  onSelect: (plan: typeof PLANS[number]) => void;
+  processing: boolean;
 }) {
-  const isCurrent = plan === currentPlan;
-  const price     = PLAN_PRICES[plan];
-  const features  = PLAN_FEATURES[plan] ?? [];
+  const isBest = plan.id === "annual";
 
   return (
-    <View style={[s.planCard, isCurrent && s.planCardCurrent]}>
-      {isCurrent && (
-        <View style={s.currentBadge}>
-          <Text style={s.currentBadgeText}>CURRENT PLAN</Text>
+    <View style={[s.planCard, isBest && s.planCardBest]}>
+      {plan.highlight && (
+        <View style={[s.ribbon, isBest && s.ribbonBest]}>
+          <Text style={s.ribbonText}>{plan.highlight}</Text>
         </View>
       )}
-      <Text style={s.planName}>{plan}</Text>
+
+      <Text style={s.planName}>{plan.name}</Text>
       <View style={s.priceRow}>
-        <Text style={s.priceValue}>{formatPeso(price)}</Text>
-        <Text style={s.priceUnit}>/month</Text>
+        <Text style={s.priceValue}>{formatPeso(plan.price)}</Text>
+        <Text style={s.priceUnit}>{plan.period}</Text>
       </View>
+      <Text style={s.effective}>≈ {plan.effective}</Text>
 
       <View style={s.featureList}>
-        {features.map((f) => (
+        {plan.features.map((f) => (
           <View key={f} style={s.featureRow}>
             <Text style={s.featureCheck}>✓</Text>
             <Text style={s.featureText}>{f}</Text>
@@ -68,120 +116,42 @@ function PlanCard({
       </View>
 
       <Pressable
-        style={({ pressed }) => [
-          s.planBtn,
-          isCurrent && s.planBtnDisabled,
-          pressed && !isCurrent && s.planBtnPressed,
-        ]}
-        onPress={() => !isCurrent && onSelect(plan)}
-        disabled={isCurrent || processing}
+        style={({ pressed }) => [s.planBtn, isBest && s.planBtnBest, pressed && s.planBtnPressed]}
+        onPress={() => onSelect(plan)}
+        disabled={processing}
       >
-        <Text style={[s.planBtnText, isCurrent && s.planBtnTextDisabled]}>
-          {isCurrent ? "Active" : `Upgrade to ${plan}`}
-        </Text>
+        <Text style={s.planBtnText}>Upgrade — {formatPeso(plan.price)}</Text>
       </Pressable>
     </View>
   );
 }
 
-// ── Payment method selector sheet ─────────────────────────────────────────────
-function PaymentMethodSheet({
-  amount, description, onClose, onConfirm, processing,
-}: {
-  amount: number; description: string; onClose: () => void;
-  onConfirm: (method: string) => void; processing: boolean;
-}) {
-  const methods = [
-    { id: "gcash", label: "GCash",      icon: "💙" },
-    { id: "maya",  label: "Maya",       icon: "💚" },
-    { id: "card",  label: "Credit/Debit Card", icon: "💳" },
-  ];
-
-  return (
-    <View style={ps.sheet}>
-      <View style={ps.handle} />
-      <Text style={ps.title}>Choose Payment Method</Text>
-      <Text style={ps.amount}>{formatPeso(amount)}</Text>
-      <Text style={ps.desc}>{description}</Text>
-
-      {methods.map((m) => (
-        <Pressable
-          key={m.id}
-          style={({ pressed }) => [ps.methodRow, pressed && ps.methodPressed]}
-          onPress={() => onConfirm(m.id)}
-          disabled={processing}
-        >
-          <Text style={ps.methodIcon}>{m.icon}</Text>
-          <Text style={ps.methodLabel}>{m.label}</Text>
-          {processing
-            ? <ActivityIndicator color={C.green} size="small" />
-            : <Text style={ps.methodArrow}>›</Text>
-          }
-        </Pressable>
-      ))}
-
-      <Pressable style={ps.cancel} onPress={onClose} disabled={processing}>
-        <Text style={ps.cancelText}>Cancel</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-// ── Main Payments Screen ──────────────────────────────────────────────────────
+// ── Main Payments Screen ─────────────────────────────────────────
 export default function PaymentsScreen() {
   const [tab, setTab]               = useState<Tab>("upgrade");
-  const [sheetOpen, setSheetOpen]   = useState(false);
-  const [sheetConfig, setSheetConfig] = useState<{ amount: number; desc: string; type: string; planTarget?: string } | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const uid = auth.currentUser?.uid;
   const { payments, loading } = usePayments(uid);
 
-  // TODO Phase 3 integration: replace with real current plan from useSubscriber
-  const currentPlan = "Standard";
+  const [selectedPlan, setSelectedPlan] = useState<typeof PLANS[number] | null>(null);
 
-  const openPaymentSheet = (amount: number, desc: string, type: string, planTarget?: string) => {
-    setSheetConfig({ amount, desc, type, planTarget });
-    setSheetOpen(true);
+  const handleUpgrade = (plan: typeof PLANS[number]) => {
+    setSelectedPlan(plan);
   };
 
-  const handleConfirmPayment = async (method: string) => {
-    if (!sheetConfig || !uid) return;
-    setProcessing(true);
+  const handleMessageSNBX = async () => {
+    const planName = selectedPlan?.name ?? "";
+    const price = selectedPlan ? `₱${selectedPlan.price.toLocaleString("en-PH")}` : "";
+    const url = `https://m.me/snbxpro`;
+    const fbUrl = `https://www.facebook.com/snbxpro`;
     try {
-      const res = await fetch(PAYMENT_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId:      uid,
-          amount:      sheetConfig.amount,
-          method,
-          type:        sheetConfig.type,
-          description: sheetConfig.desc,
-          planTarget:  sheetConfig.planTarget ?? null,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.checkoutUrl) {
-        setSheetOpen(false);
-        await Linking.openURL(data.checkoutUrl);
-      } else {
-        Alert.alert("Payment Error", data.error ?? "Could not start checkout. Please try again.");
-      }
-    } catch (e: any) {
-      Alert.alert("Connection Error", "Could not reach payment server. Check your internet connection.");
-    } finally {
-      setProcessing(false);
+      await Linking.openURL(url);
+    } catch {
+      try { await Linking.openURL(fbUrl); } catch {}
     }
+    setSelectedPlan(null);
   };
-
-  const simLoadOptions = [
-    { amount: 100, label: "₱100 Load Credit" },
-    { amount: 300, label: "₱300 Load Credit" },
-    { amount: 500, label: "₱500 Load Credit" },
-  ];
 
   return (
     <View style={s.root}>
@@ -189,10 +159,16 @@ export default function PaymentsScreen() {
 
       {/* Header */}
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} style={s.back}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace("/dashboard" as any);
+          }}
+          style={s.back}
+        >
           <Text style={s.backText}>←</Text>
         </Pressable>
-        <Text style={s.headerTitle}>Payments</Text>
+        <Text style={s.headerTitle}>Upgrade Plan</Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -200,7 +176,6 @@ export default function PaymentsScreen() {
       <View style={s.tabs}>
         {([
           { id: "upgrade", label: "Upgrade Plan" },
-          { id: "load",    label: "SIM Load" },
           { id: "history", label: "History" },
         ] as const).map((t) => (
           <Pressable
@@ -215,55 +190,25 @@ export default function PaymentsScreen() {
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* ── Upgrade Plan Tab ── */}
+        {/* ── Upgrade Tab ── */}
         {tab === "upgrade" && (
           <>
             <Text style={s.sectionIntro}>
-              Choose the plan that fits your business. Upgrade anytime — changes apply instantly.
+              Choose the plan that fits your business. Longer commitment = bigger savings.
+              All plans include SMS, Payments, and your GHL sub-account.
             </Text>
-            {Object.keys(PLAN_PRICES).map((plan) => (
+            {PLANS.map((plan) => (
               <PlanCard
-                key={plan}
+                key={plan.id}
                 plan={plan}
-                currentPlan={currentPlan}
                 processing={processing}
-                onSelect={(p) => openPaymentSheet(
-                  PLAN_PRICES[p],
-                  `Upgrade to ${p} Plan`,
-                  "plan_upgrade",
-                  p
-                )}
+                onSelect={handleUpgrade}
               />
             ))}
-          </>
-        )}
-
-        {/* ── SIM Load Tab ── */}
-        {tab === "load" && (
-          <>
-            <View style={s.infoBox}>
-              <Text style={s.infoIcon}>📱</Text>
-              <Text style={s.infoText}>
-                Top up your SMS Gateway SIM card load directly. No Textbee subscription needed —
-                you use your own SIM and pay only for the load you need.
-              </Text>
-            </View>
-
-            <Text style={[s.sectionIntro, { marginTop: 8 }]}>Select an amount</Text>
-
-            {simLoadOptions.map((opt) => (
-              <Pressable
-                key={opt.amount}
-                style={({ pressed }) => [s.loadCard, pressed && s.loadCardPressed]}
-                onPress={() => openPaymentSheet(opt.amount, opt.label, "sim_load")}
-              >
-                <View>
-                  <Text style={s.loadAmount}>{formatPeso(opt.amount)}</Text>
-                  <Text style={s.loadLabel}>{opt.label}</Text>
-                </View>
-                <Text style={s.loadArrow}>›</Text>
-              </Pressable>
-            ))}
+            <Text style={s.note}>
+              💡 SMS uses your own SIM load (₱0 per text). Payment processing fees may apply on
+              payments you receive via SNBX Pay.
+            </Text>
           </>
         )}
 
@@ -284,7 +229,9 @@ export default function PaymentsScreen() {
                 <View key={p.id} style={s.historyCard}>
                   <View style={s.historyLeft}>
                     <Text style={s.historyDesc}>{p.description}</Text>
-                    <Text style={s.historyDate}>{formatDate(p.createdAt)} · {p.method.toUpperCase()}</Text>
+                    <Text style={s.historyDate}>
+                      {formatDate(p.createdAt)}{p.method ? ` · ${p.method.toUpperCase()}` : ""}
+                    </Text>
                   </View>
                   <View style={s.historyRight}>
                     <Text style={s.historyAmount}>{formatPeso(p.amount)}</Text>
@@ -299,25 +246,67 @@ export default function PaymentsScreen() {
         )}
 
       </ScrollView>
+      {/* Upgrade info modal */}
+      <Modal
+        visible={!!selectedPlan}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPlan(null)}
+      >
+        <View style={s.modalOverlay}>
+          <Pressable style={s.modalBg} onPress={() => setSelectedPlan(null)} />
+          <View style={s.modalCard}>
+            <Text style={s.modalIcon}>🚀</Text>
+            <Text style={s.modalTitle}>Let's Get You Upgraded!</Text>
 
-      {/* Payment method sheet */}
-      {sheetOpen && sheetConfig && (
-        <View style={s.overlay}>
-          <Pressable style={s.overlayBg} onPress={() => !processing && setSheetOpen(false)} />
-          <PaymentMethodSheet
-            amount={sheetConfig.amount}
-            description={sheetConfig.desc}
-            processing={processing}
-            onClose={() => setSheetOpen(false)}
-            onConfirm={handleConfirmPayment}
-          />
+            {selectedPlan && (
+              <View style={s.modalPlanBox}>
+                <Text style={s.modalPlanName}>{selectedPlan.name} Plan</Text>
+                <Text style={s.modalPlanPrice}>
+                  ₱{selectedPlan.price.toLocaleString("en-PH")}{selectedPlan.period}
+                </Text>
+              </View>
+            )}
+
+            <Text style={s.modalDesc}>
+              To upgrade, message the <Text style={s.modalBold}>SNBX Pro</Text> Facebook Page.
+              Our team will:
+            </Text>
+
+            <View style={s.modalSteps}>
+              {[
+                "Confirm your plan and payment details",
+                "Guide you through payment (GCash / Maya)",
+                "Schedule your onboarding session",
+                "Set up your SMS + Payments — together!",
+              ].map((step, i) => (
+                <View key={i} style={s.modalStepRow}>
+                  <View style={s.modalStepNum}>
+                    <Text style={s.modalStepNumText}>{i + 1}</Text>
+                  </View>
+                  <Text style={s.modalStepText}>{step}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [s.modalBtn, pressed && s.modalBtnPressed]}
+              onPress={handleMessageSNBX}
+            >
+              <Text style={s.modalBtnText}>Message SNBX Pro Page</Text>
+            </Pressable>
+
+            <Pressable style={s.modalCancel} onPress={() => setSelectedPlan(null)}>
+              <Text style={s.modalCancelText}>Maybe later</Text>
+            </Pressable>
+          </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   header: {
@@ -340,6 +329,11 @@ const s = StyleSheet.create({
 
   scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 48 },
   sectionIntro: { fontSize: 13, color: C.body, lineHeight: 20, marginBottom: 18 },
+  note: {
+    fontSize: 12, color: C.muted, lineHeight: 18, marginTop: 4,
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
+    borderRadius: 12, padding: 14,
+  },
 
   center: { alignItems: "center", justifyContent: "center", padding: 48 },
   emptyIcon: { fontSize: 36, marginBottom: 12 },
@@ -350,49 +344,30 @@ const s = StyleSheet.create({
     backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
     borderRadius: 18, padding: 20, marginBottom: 14, position: "relative",
   },
-  planCardCurrent: { borderColor: C.green, borderWidth: 1.5 },
-  currentBadge: {
+  planCardBest: { borderColor: C.green, borderWidth: 2 },
+  ribbon: {
     position: "absolute", top: -10, right: 16,
-    backgroundColor: C.green, paddingHorizontal: 10,
+    backgroundColor: C.gold, paddingHorizontal: 10,
     paddingVertical: 4, borderRadius: 10,
   },
-  currentBadgeText: { fontSize: 10, fontWeight: "700", color: "#FFFFFF", letterSpacing: 0.5 },
+  ribbonBest: { backgroundColor: C.green },
+  ribbonText: { fontSize: 10, fontWeight: "800", color: "#FFFFFF", letterSpacing: 0.5 },
   planName: { fontSize: 18, fontWeight: "800", color: C.ink, marginBottom: 6 },
-  priceRow: { flexDirection: "row", alignItems: "baseline", marginBottom: 16 },
+  priceRow: { flexDirection: "row", alignItems: "baseline" },
   priceValue: { fontSize: 28, fontWeight: "800", color: C.green },
   priceUnit: { fontSize: 13, color: C.muted, marginLeft: 4 },
+  effective: { fontSize: 12, color: C.muted, marginBottom: 16, marginTop: 2 },
   featureList: { marginBottom: 18 },
-  featureRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  featureRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 8 },
   featureCheck: { fontSize: 13, color: C.green, fontWeight: "700" },
-  featureText: { fontSize: 13, color: C.body, flex: 1 },
+  featureText: { fontSize: 13, color: C.body, flex: 1, lineHeight: 19 },
   planBtn: {
     backgroundColor: C.green, paddingVertical: 13,
     borderRadius: 12, alignItems: "center",
   },
+  planBtnBest: { backgroundColor: C.green },
   planBtnPressed: { backgroundColor: C.greenDark },
-  planBtnDisabled: { backgroundColor: C.cardBorder },
   planBtnText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF" },
-  planBtnTextDisabled: { color: C.muted },
-
-  // Info box
-  infoBox: {
-    flexDirection: "row", gap: 12, backgroundColor: C.greenSoft,
-    borderWidth: 1, borderColor: "#CBEADF", borderRadius: 14,
-    padding: 16, marginBottom: 8,
-  },
-  infoIcon: { fontSize: 22 },
-  infoText: { fontSize: 13, color: C.body, flex: 1, lineHeight: 20 },
-
-  // Load card
-  loadCard: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
-    borderRadius: 14, padding: 18, marginBottom: 10,
-  },
-  loadCardPressed: { opacity: 0.75 },
-  loadAmount: { fontSize: 20, fontWeight: "800", color: C.ink, marginBottom: 2 },
-  loadLabel: { fontSize: 12, color: C.muted },
-  loadArrow: { fontSize: 22, color: C.muted },
 
   // History card
   historyCard: {
@@ -407,30 +382,38 @@ const s = StyleSheet.create({
   historyAmount: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 4 },
   historyStatus: { fontSize: 10, fontWeight: "700", letterSpacing: 0.3 },
 
-  // Overlay + sheet
-  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: "flex-end", zIndex: 100 },
-  overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(13,27,42,0.45)" },
-});
-
-const ps = StyleSheet.create({
-  sheet: {
-    backgroundColor: C.bg, borderTopLeftRadius: 24,
-    borderTopRightRadius: 24, padding: 24, paddingBottom: 40,
-    borderWidth: 1, borderColor: C.cardBorder,
+  // Upgrade modal
+  modalOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: "center", alignItems: "center", padding: 24 },
+  modalBg: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(13,27,42,0.5)" },
+  modalCard: {
+    backgroundColor: C.bg, borderRadius: 24, padding: 26,
+    width: "100%", maxWidth: 400, alignItems: "center",
   },
-  handle: { width: 40, height: 4, backgroundColor: C.cardBorder, borderRadius: 2, alignSelf: "center", marginBottom: 20 },
-  title: { fontSize: 17, fontWeight: "800", color: C.ink, textAlign: "center", marginBottom: 6 },
-  amount: { fontSize: 32, fontWeight: "800", color: C.green, textAlign: "center", marginBottom: 4 },
-  desc: { fontSize: 13, color: C.muted, textAlign: "center", marginBottom: 24 },
-  methodRow: {
-    flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
-    borderRadius: 14, padding: 16, marginBottom: 10,
+  modalIcon: { fontSize: 44, marginBottom: 12 },
+  modalTitle: { fontSize: 20, fontWeight: "800", color: C.ink, marginBottom: 16, textAlign: "center" },
+  modalPlanBox: {
+    backgroundColor: C.greenSoft, borderWidth: 1, borderColor: "#CBEADF",
+    borderRadius: 14, paddingVertical: 12, paddingHorizontal: 20,
+    alignItems: "center", marginBottom: 18, width: "100%",
   },
-  methodPressed: { opacity: 0.7 },
-  methodIcon: { fontSize: 22 },
-  methodLabel: { fontSize: 15, fontWeight: "600", color: C.ink, flex: 1 },
-  methodArrow: { fontSize: 20, color: C.muted },
-  cancel: { alignItems: "center", paddingVertical: 12, marginTop: 6 },
-  cancelText: { fontSize: 15, color: C.muted, fontWeight: "500" },
+  modalPlanName: { fontSize: 13, fontWeight: "700", color: C.greenDark, marginBottom: 2 },
+  modalPlanPrice: { fontSize: 22, fontWeight: "800", color: C.green },
+  modalDesc: { fontSize: 14, color: C.body, textAlign: "center", lineHeight: 21, marginBottom: 16 },
+  modalBold: { fontWeight: "800", color: C.ink },
+  modalSteps: { width: "100%", marginBottom: 22 },
+  modalStepRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 10 },
+  modalStepNum: {
+    width: 22, height: 22, borderRadius: 11, backgroundColor: C.greenSoft,
+    alignItems: "center", justifyContent: "center", marginTop: 1,
+  },
+  modalStepNumText: { fontSize: 11, fontWeight: "700", color: C.greenDark },
+  modalStepText: { fontSize: 13, color: C.body, flex: 1, lineHeight: 20 },
+  modalBtn: {
+    backgroundColor: C.green, paddingVertical: 15, borderRadius: 14,
+    alignItems: "center", width: "100%", marginBottom: 10,
+  },
+  modalBtnPressed: { backgroundColor: C.greenDark },
+  modalBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
+  modalCancel: { paddingVertical: 8 },
+  modalCancelText: { fontSize: 14, color: C.muted, fontWeight: "500" },
 });
