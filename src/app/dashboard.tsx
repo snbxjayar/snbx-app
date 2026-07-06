@@ -337,6 +337,11 @@ export default function DashboardScreen() {
           onPress={() => router.push("/ranking" as any)}
         />
 
+        <ToolCard
+          icon="❓" label="How to Use" desc="Learn how each feature works"
+          onPress={() => router.push("/guide" as any)}
+        />
+
         {/* Coming soon */}
         <View style={st.comingSoon}>
           <Text style={st.comingSoonText}>

@@ -25,6 +25,7 @@ export default function RootLayout() {
       <Stack.Screen name="edit-profile" />
       <Stack.Screen name="ranking" />
       <Stack.Screen name="insurance-financial" />
+      <Stack.Screen name="guide" />
     </Stack>
   );
 }
