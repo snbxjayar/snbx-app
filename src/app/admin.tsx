@@ -16,13 +16,24 @@ import { auth, db } from "../firebase";
 import { router } from "expo-router";
 import { C } from "../theme";
 
+const RANK_OPTIONS = [
+  "Unranked", "Basic",
+  "Pawn", "Rook", "Knight", "Bishop", "Queen", "King", "The Master",
+  "Standard", "Premium", "VIP",
+];
+
+const AXA_ROLES = ["none", "Advisor", "Unit Manager", "Branch Manager"];
+
 type UserRecord = {
   id: string;
   name: string;
   email: string;
   status: "pending" | "approved" | "rejected";
   isAdmin: boolean;
+  rankLevel?: string;
   createdAt: any;
+  hasPolicy?: boolean;
+  axaRole?: string;
 };
 
 type Tab = "pending" | "approved" | "rejected";
@@ -34,11 +45,14 @@ function formatDate(ts: any): string {
 }
 
 function UserCard({
-  user, onApprove, onReject, processing,
+  user, onApprove, onReject, onSetRank, onTogglePolicy, onSetAxaRole, processing,
 }: {
   user: UserRecord;
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
+  onSetRank?: (id: string, rank: string) => void;
+  onTogglePolicy?: (id: string, current: boolean) => void;
+  onSetAxaRole?: (id: string, role: string) => void;
   processing: string | null;
 }) {
   const isProcessing = processing === user.id;
@@ -74,7 +88,7 @@ function UserCard({
         </View>
       </View>
 
-      {/* Action buttons for pending users */}
+      {/* Pending users: approve / reject */}
       {user.status === "pending" && (
         <View style={st.actions}>
           <Pressable
@@ -97,20 +111,69 @@ function UserCard({
         </View>
       )}
 
-      {/* Revoke button for approved users */}
-      {user.status === "approved" && !user.isAdmin && (
-        <View style={st.actions}>
-          <Pressable
-            style={({ pressed }) => [st.rejectBtn, { flex: 1 }, pressed && st.rejectBtnPressed]}
-            onPress={() => onReject?.(user.id)}
-            disabled={!!processing}
-          >
-            <Text style={st.rejectBtnText}>Revoke Access</Text>
-          </Pressable>
-        </View>
+      {/* Approved users: rank selector + revoke */}
+      {user.status === "approved" && (
+        <>
+          <Text style={st.rankLabel}>Plan / Rank</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={st.rankScroll}>
+            {RANK_OPTIONS.map((opt) => {
+              const active = (user.rankLevel ?? "Unranked") === opt;
+              return (
+                <Pressable
+                  key={opt}
+                  style={[st.rankChip, active && st.rankChipActive, opt === "VIP" && active && st.rankChipVIP]}
+                  onPress={() => onSetRank?.(user.id, opt)}
+                >
+                  <Text style={[st.rankChipText, active && st.rankChipTextActive]}>{opt}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {/* AXA / Insurance controls */}
+          <View style={st.axaRow}>
+            <Text style={st.rankLabel}>Has Policy</Text>
+            <Pressable
+              style={[st.policyToggle, user.hasPolicy && st.policyToggleOn]}
+              onPress={() => onTogglePolicy?.(user.id, !!user.hasPolicy)}
+            >
+              <Text style={[st.policyToggleText, user.hasPolicy && { color: "#FFFFFF" }]}>
+                {user.hasPolicy ? "✓ Yes" : "No"}
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text style={st.rankLabel}>AXA Role</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={st.rankScroll}>
+            {AXA_ROLES.map((role) => {
+              const active = (user.axaRole ?? "none") === role;
+              return (
+                <Pressable
+                  key={role}
+                  style={[st.rankChip, active && st.rankChipActive]}
+                  onPress={() => onSetAxaRole?.(user.id, role)}
+                >
+                  <Text style={[st.rankChipText, active && st.rankChipTextActive]}>
+                    {role === "none" ? "None" : role}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          <View style={st.actions}>
+            <Pressable
+              style={({ pressed }) => [st.rejectBtn, { flex: 1 }, pressed && st.rejectBtnPressed]}
+              onPress={() => onReject?.(user.id)}
+              disabled={!!processing}
+            >
+              <Text style={st.rejectBtnText}>Revoke Access</Text>
+            </Pressable>
+          </View>
+        </>
       )}
 
-      {/* Re-approve button for rejected users */}
+      {/* Rejected users: re-approve */}
       {user.status === "rejected" && (
         <View style={st.actions}>
           <Pressable
@@ -140,14 +203,11 @@ export default function AdminScreen() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        // Signed out — detach admin-check listener before redirecting
         unsubAdminCheckRef.current?.();
         unsubAdminCheckRef.current = null;
         router.replace("/");
         return;
       }
-
-      // Check admin status in real-time
       const userRef = doc(db, "users", user.uid);
       unsubAdminCheckRef.current = onSnapshot(userRef, (snap) => {
         if (!snap.exists() || !snap.data().isAdmin) {
@@ -184,7 +244,6 @@ export default function AdminScreen() {
       setUsers(records);
       setLoading(false);
     }, (err) => {
-      // Sign-out mid-listen throws permission-denied — expected, ignore
       console.log("Admin list listener ended:", err.code);
     });
 
@@ -219,6 +278,26 @@ export default function AdminScreen() {
     }
   }, []);
 
+  const handleSetRank = useCallback(async (userId: string, rankLevel: string) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { rankLevel });
+    } catch (e) {
+      console.error("Set rank error:", e);
+    }
+  }, []);
+
+  const handleTogglePolicy = useCallback(async (userId: string, current: boolean) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { hasPolicy: !current });
+    } catch (e) { console.error("Toggle policy error:", e); }
+  }, []);
+
+  const handleSetAxaRole = useCallback(async (userId: string, axaRole: string) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { axaRole });
+    } catch (e) { console.error("Set AXA role error:", e); }
+  }, []);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 800);
@@ -242,11 +321,8 @@ export default function AdminScreen() {
       <View style={st.header}>
         <Pressable
           onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace("/dashboard" as any);
-            }
+            if (router.canGoBack()) router.back();
+            else router.replace("/dashboard" as any);
           }}
           style={st.back}
         >
@@ -314,6 +390,9 @@ export default function AdminScreen() {
               processing={processing}
               onApprove={handleApprove}
               onReject={handleReject}
+              onSetRank={handleSetRank}
+              onTogglePolicy={handleTogglePolicy}
+              onSetAxaRole={handleSetAxaRole}
             />
           ))
         )}
@@ -381,6 +460,17 @@ const st = StyleSheet.create({
   statusPending:  { backgroundColor: C.goldSoft, borderColor: "rgba(184,147,58,0.45)" },
   statusText: { fontSize: 10, fontWeight: "700", letterSpacing: 0.3 },
 
+  rankLabel: { fontSize: 11, fontWeight: "700", color: C.muted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8, marginTop: 4 },
+  rankScroll: { marginBottom: 12 },
+  rankChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+    backgroundColor: C.bg, borderWidth: 1, borderColor: C.cardBorder, marginRight: 6,
+  },
+  rankChipActive: { backgroundColor: C.green, borderColor: C.green },
+  rankChipVIP: { backgroundColor: C.gold, borderColor: C.gold },
+  rankChipText: { fontSize: 12, fontWeight: "600", color: C.muted },
+  rankChipTextActive: { color: "#FFFFFF" },
+
   actions: { flexDirection: "row", gap: 8, marginTop: 4 },
   approveBtn: {
     flex: 1, backgroundColor: C.green, paddingVertical: 10,
@@ -395,4 +485,12 @@ const st = StyleSheet.create({
   rejectBtnPressed: { backgroundColor: "rgba(214,69,69,0.06)" },
   rejectBtnText: { fontSize: 13, fontWeight: "700", color: C.error },
   btnDisabled: { opacity: 0.6 },
+
+  axaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12, marginTop: 4 },
+  policyToggle: {
+    paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16,
+    backgroundColor: C.bg, borderWidth: 1, borderColor: C.cardBorder,
+  },
+  policyToggleOn: { backgroundColor: C.green, borderColor: C.green },
+  policyToggleText: { fontSize: 12, fontWeight: "700", color: C.muted },
 });

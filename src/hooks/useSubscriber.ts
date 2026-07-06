@@ -13,6 +13,9 @@ export type UserProfile = {
   createdAt: any;
   isAdmin?: boolean;
   avatarColor?: string;
+  rankLevel?: string;
+  hasPolicy?: boolean;
+  axaRole?: string; // "none" | "Advisor" | "Unit Manager" | "Branch Manager"
 };
 
 export type Subscription = {

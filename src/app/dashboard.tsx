@@ -21,6 +21,24 @@ import {
 
 const { SNBXSmsModule } = NativeModules;
 
+// Which ranks unlock which tools
+const SMS_RANKS = ["Pawn", "Rook", "Knight", "Bishop", "Queen", "King", "The Master", "Standard", "Premium", "VIP"];
+const GHL_RANKS = ["Basic", ...SMS_RANKS];
+const AXA_RANKS = ["Knight", "Bishop", "Queen", "King"];
+
+function canAccess(tool: string, profile?: { rankLevel?: string; hasPolicy?: boolean; axaRole?: string }) {
+  const rank = profile?.rankLevel ?? "Unranked";
+  switch (tool) {
+    case "sms":     return SMS_RANKS.includes(rank);
+    case "ghl":     return GHL_RANKS.includes(rank);
+    case "insurance":
+      return AXA_RANKS.includes(rank)
+        || profile?.hasPolicy === true
+        || (profile?.axaRole && profile.axaRole !== "none");
+    default:        return true;
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDate(ts: any): string {
   if (!ts) return "—";
@@ -71,79 +89,110 @@ function ProfileCard({ user, name, avatarColor }: { user: User; name: string; av
   );
 }
 
-function SubscriptionCard({ sub }: { sub: Subscription }) {
-  const planColor  = PLAN_COLORS[sub.plan] ?? C.green;
-  const days       = daysUntil(sub.renewalDate);
-  const icon       = CHESS_ICONS[sub.chessLevel] ?? "♟";
-  const progress   = chessProgress(sub.chessLevel);
-  const isExpiring = days <= 7 && days > 0;
-  const isExpired  = days === 0;
+// Level order for progress calculation
+const LEVEL_ORDER = ["Pawn", "Rook", "Knight", "Bishop", "Queen", "King", "The Master"];
+
+const LEVEL_INFO: Record<string, { icon: string; label: string; sub: string }> = {
+  Unranked:     { icon: "🎖️", label: "Unranked",          sub: "Select a plan to start" },
+  Basic:        { icon: "🌱", label: "Basic Plan",         sub: "The Essentials" },
+  Pawn:         { icon: "♟",  label: "Pawn · Lvl 1",       sub: "The First Step" },
+  Rook:         { icon: "♜",  label: "Rook · Lvl 2",       sub: "The Referral Reward" },
+  Knight:       { icon: "♞",  label: "Knight · Lvl 3",     sub: "Protected. Fearless." },
+  Bishop:       { icon: "♝",  label: "Bishop · Lvl 4",     sub: "A Professional. Respected." },
+  Queen:        { icon: "♛",  label: "Queen · Lvl 5",      sub: "A Leader of Leaders" },
+  King:         { icon: "♚",  label: "King · Lvl 6",       sub: "You Command the Board" },
+  "The Master": { icon: "👑", label: "The Master · Lvl 7", sub: "Success & Freedom" },
+  Standard:     { icon: "⚡", label: "Standard Plan",      sub: "Power User" },
+  Premium:      { icon: "⚡", label: "Premium Plan",       sub: "Full Power" },
+  VIP:          { icon: "👑✨", label: "VIP Member",        sub: "Team SNBX Elite" },
+};
+
+function RankStatusCard({ rankLevel, sub }: { rankLevel?: string; sub?: Subscription }) {
+  const rank = rankLevel ?? "Unranked";
+  const info = LEVEL_INFO[rank] ?? LEVEL_INFO.Unranked;
+  const isVIP = rank === "VIP";
+  const isUnranked = rank === "Unranked";
+
+  const levelIndex = LEVEL_ORDER.indexOf(rank);
+  const isLevel = levelIndex !== -1;
+  const progress = isLevel ? Math.round(((levelIndex + 1) / LEVEL_ORDER.length) * 100) : 0;
+
+  const renewal = sub?.renewalDate;
+  const daysLeft = renewal ? daysUntil(renewal) : null;
 
   return (
-    <View style={[st.subCard, { borderLeftColor: planColor, borderLeftWidth: 3 }]}>
-      <View style={st.subHeader}>
-        <View style={[st.planBadge, { backgroundColor: `${planColor}14`, borderColor: `${planColor}55` }]}>
-          <Text style={[st.planBadgeText, { color: planColor }]}>{sub.plan} Plan</Text>
+    <Pressable
+      style={({ pressed }) => [st.rankCard, isVIP && st.rankCardVIP, pressed && { opacity: 0.9 }]}
+      onPress={() => router.push("/ranking" as any)}
+    >
+      {/* Top row: icon + name + status pill */}
+      <View style={st.rankTopRow}>
+        <View style={[st.rankIconWrap, isVIP && st.rankIconWrapVIP]}>
+          <Text style={st.rankIconText}>{info.icon}</Text>
+        </View>
+        <View style={st.rankInfo}>
+          <Text style={st.rankLabelText}>{info.label}</Text>
+          <Text style={st.rankSubText}>{info.sub}</Text>
         </View>
         <View style={[
-          st.statusBadge,
-          isExpired   && { backgroundColor: "rgba(214,69,69,0.08)", borderColor: "rgba(214,69,69,0.35)" },
-          isExpiring  && { backgroundColor: "rgba(184,147,58,0.08)", borderColor: "rgba(184,147,58,0.4)" },
-          !isExpired && !isExpiring && { backgroundColor: C.greenSoft, borderColor: "rgba(29,158,117,0.4)" },
+          st.rankPill,
+          isUnranked ? st.rankPillMuted : isVIP ? st.rankPillVIP : st.rankPillActive,
         ]}>
           <Text style={[
-            st.statusText,
-            isExpired  && { color: C.error },
-            isExpiring && { color: C.gold },
-            !isExpired && !isExpiring && { color: C.greenDark },
+            st.rankPillText,
+            isUnranked ? { color: C.muted } : isVIP ? { color: C.gold } : { color: C.greenDark },
           ]}>
-            {isExpired ? "Expired" : isExpiring ? `${days}d left` : "Active"}
+            {isUnranked ? "Set up" : isVIP ? "Elite" : "Active"}
           </Text>
         </View>
       </View>
 
-      <View style={st.chessRow}>
-        <Text style={st.chessIcon}>{icon}</Text>
-        <View style={st.chessInfo}>
-          <Text style={st.chessLevel}>{sub.chessLevel}</Text>
-          <Text style={st.chessSub}>Chess Level</Text>
-        </View>
-        <Text style={st.chessPercent}>{progress}%</Text>
-      </View>
+      {/* Progress bar — only for level-track members */}
+      {isLevel && (
+        <>
+          <View style={st.rankProgressTrack}>
+            <View style={[st.rankProgressFill, { width: `${progress}%` as any }]} />
+          </View>
+          <Text style={st.rankProgressLabel}>
+            Level {levelIndex + 1} of {LEVEL_ORDER.length} · {progress}% to Master
+          </Text>
+        </>
+      )}
 
-      <View style={st.progressTrack}>
-        <View style={[st.progressFill, { width: `${progress}%` as any, backgroundColor: planColor }]} />
-      </View>
-      <Text style={st.progressLabel}>
-        {CHESS_LEVELS.indexOf(sub.chessLevel) + 1} of {CHESS_LEVELS.length} levels
-      </Text>
+      {/* Subscription meta — renewal + sub-account */}
+      {sub && (
+        <View style={st.rankMetaRow}>
+          <View style={st.rankMeta}>
+            <Text style={st.rankMetaLabel}>Renewal Date</Text>
+            <Text style={st.rankMetaValue}>{formatDate(sub.renewalDate)}</Text>
+            {daysLeft !== null && daysLeft <= 7 && daysLeft > 0 && (
+              <Text style={st.rankMetaWarn}>{daysLeft} day(s) left</Text>
+            )}
+          </View>
+          <View style={st.rankMeta}>
+            <Text style={st.rankMetaLabel}>Sub-Account</Text>
+            <Text style={st.rankMetaValue} numberOfLines={1}>{sub.subAccountId || "—"}</Text>
+          </View>
+        </View>
+      )}
 
-      <View style={st.subFooter}>
-        <View style={st.subMeta}>
-          <Text style={st.subMetaLabel}>Renewal Date</Text>
-          <Text style={st.subMetaValue}>{formatDate(sub.renewalDate)}</Text>
-        </View>
-        <View style={st.subMeta}>
-          <Text style={st.subMetaLabel}>Sub-Account</Text>
-          <Text style={st.subMetaValue} numberOfLines={1}>{sub.subAccountId || "—"}</Text>
-        </View>
-      </View>
-    </View>
+      <Text style={st.rankTapHint}>Tap to view your full ranking journey →</Text>
+    </Pressable>
   );
 }
 
-function ToolCard({ icon, label, desc, onPress }: {
-  icon: string; label: string; desc: string; onPress: () => void;
+function ToolCard({ icon, label, desc, onPress, locked }: {
+  icon: string; label: string; desc: string; onPress: () => void; locked?: boolean;
 }) {
   return (
     <Pressable
-      style={({ pressed }) => [st.toolCard, pressed && st.toolPressed]}
+      style={({ pressed }) => [st.toolCard, pressed && st.toolPressed, locked && st.toolCardLocked]}
       onPress={onPress}
     >
-      <Text style={st.toolIcon}>{icon}</Text>
+      <Text style={[st.toolIcon, locked && { opacity: 0.4 }]}>{locked ? "🔒" : icon}</Text>
       <View style={st.toolBody}>
-        <Text style={st.toolLabel}>{label}</Text>
-        <Text style={st.toolDesc}>{desc}</Text>
+        <Text style={[st.toolLabel, locked && { color: C.muted }]}>{label}</Text>
+        <Text style={st.toolDesc}>{locked ? "Upgrade to unlock" : desc}</Text>
       </View>
       <Text style={st.toolArrow}>›</Text>
     </Pressable>
@@ -244,53 +293,47 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Subscriptions */}
-        <Text style={st.sectionLabel}>
-          {activeSubs.length > 1 ? "Your Plans" : "Your Plan"}
-        </Text>
-
-        {subscriptions.length === 0 && !loading && (
-          <View style={st.emptyBox}>
-            <Text style={st.emptyIcon}>📭</Text>
-            <Text style={st.emptyText}>No active subscriptions found.{"\n"}Contact your SNBX admin.</Text>
-          </View>
-        )}
-
-        {subscriptions.map((sub) => (
-          <SubscriptionCard key={sub.id} sub={sub} />
-        ))}
+        {/* Rank / Plan status */}
+        <Text style={st.sectionLabel}>Your Plan</Text>
+        <RankStatusCard rankLevel={profile?.rankLevel} sub={subscriptions[0]} />
 
         {/* Tools */}
         <Text style={[st.sectionLabel, { marginTop: 24 }]}>Your Tools</Text>
 
         <ToolCard
-          icon="💬" label="SMS Center"
-          desc="Send & receive messages"
-          onPress={() => router.push("/sms-center" as any)}
+          icon="💬" label="SMS Center" desc="Send & receive messages"
+          locked={!canAccess("sms", profile)}
+          onPress={() => canAccess("sms", profile)
+            ? router.push("/sms-center" as any)
+            : router.push("/payments" as any)}
         />
         <ToolCard
-          icon="💳" label="Upgrade Plan"
-          desc="View plans & upgrade your subscription"
+          icon="📱" label="SMS Gateway" desc="Manage your SIM gateway settings"
+          locked={!canAccess("sms", profile)}
+          onPress={() => canAccess("sms", profile)
+            ? router.push("/gateway-setup" as any)
+            : router.push("/payments" as any)}
+        />
+        <ToolCard
+          icon="📊" label="GHL Dashboard" desc="Your sub-account overview"
+          locked={!canAccess("ghl", profile)}
+          onPress={() => canAccess("ghl", profile)
+            ? router.push("/ghl-hub" as any)
+            : router.push("/payments" as any)}
+        />
+        <ToolCard
+          icon="🛡️" label="Insurance & Financial" desc="Protection & financial wellness"
+          locked={!canAccess("insurance", profile)}
+          onPress={() => canAccess("insurance", profile)
+            ? router.push("/insurance-financial" as any)
+            : router.push("/payments" as any)}
+        />
+        <ToolCard
+          icon="💳" label="Upgrade Plan" desc="View plans & upgrade your subscription"
           onPress={() => router.push("/payments" as any)}
         />
         <ToolCard
-          icon="📊" label="GHL Dashboard"
-          desc="Your sub-account overview"
-          onPress={() => router.push("/ghl-hub" as any)}
-        />
-        <ToolCard
-          icon="📱" label="SMS Gateway"
-          desc="Manage your SIM gateway settings"
-          onPress={() => router.push("/gateway-setup" as any)}
-        />
-        <ToolCard
-          icon="🛡️" label="Insurance & Financial"
-          desc="Policy & documents"
-          onPress={() => console.log("AXA — coming soon")}
-        />
-        <ToolCard
-          icon="♟" label="SNBX Ranking"
-          desc="Track your level from Pawn to Master"
+          icon="♟" label="SNBX Ranking" desc="Track your level from Pawn to Master"
           onPress={() => router.push("/ranking" as any)}
         />
 
@@ -441,4 +484,38 @@ const st = StyleSheet.create({
   logoutPressed: { opacity: 0.6 },
   logoutText: { fontSize: 15, fontWeight: "600", color: C.muted },
   domain: { fontSize: 12, color: C.muted, textAlign: "center", letterSpacing: 1.2 },
+
+  rankCard: {
+    backgroundColor: C.cardBg, borderWidth: 1, borderColor: C.cardBorder,
+    borderRadius: 16, padding: 16, marginBottom: 20,
+  },
+  rankCardVIP: { borderColor: C.gold, backgroundColor: "#FBF6E9" },
+  rankTopRow: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 14 },
+  rankIconWrap: {
+    width: 48, height: 48, borderRadius: 24, backgroundColor: C.greenSoft,
+    alignItems: "center", justifyContent: "center",
+  },
+  rankIconWrapVIP: { backgroundColor: "#F5E9C8" },
+  rankIconText: { fontSize: 22 },
+  rankInfo: { flex: 1 },
+  rankLabelText: { fontSize: 16, fontWeight: "800", color: C.ink, marginBottom: 2 },
+  rankSubText: { fontSize: 12, color: C.muted },
+  rankPill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+  rankPillActive: { backgroundColor: C.greenSoft, borderColor: "rgba(29,158,117,0.4)" },
+  rankPillVIP: { backgroundColor: "#F5E9C8", borderColor: C.gold },
+  rankPillMuted: { backgroundColor: C.bg, borderColor: C.cardBorder },
+  rankPillText: { fontSize: 12, fontWeight: "700" },
+
+  rankProgressTrack: { height: 5, backgroundColor: C.cardBorder, borderRadius: 3, overflow: "hidden", marginBottom: 6 },
+  rankProgressFill: { height: "100%", backgroundColor: C.green, borderRadius: 3 },
+  rankProgressLabel: { fontSize: 11, color: C.muted, marginBottom: 14 },
+
+  rankMetaRow: { flexDirection: "row", gap: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.cardBorder },
+  rankMeta: { flex: 1 },
+  rankMetaLabel: { fontSize: 11, color: C.muted, marginBottom: 3 },
+  rankMetaValue: { fontSize: 13, color: C.body, fontWeight: "500" },
+  rankMetaWarn: { fontSize: 11, color: C.gold, fontWeight: "600", marginTop: 2 },
+  rankTapHint: { fontSize: 11, color: C.green, textAlign: "center", marginTop: 12, fontWeight: "500" },
+
+  toolCardLocked: { opacity: 0.7, borderStyle: "dashed" },
 });
