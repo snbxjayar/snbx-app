@@ -4,12 +4,12 @@
 import {
   View, Text, StyleSheet, StatusBar, Pressable,
   TextInput, KeyboardAvoidingView,
-  Platform, ActivityIndicator, FlatList,
+  Platform, ActivityIndicator, FlatList, Alert,
 } from "react-native";
 import { useState, useEffect } from "react";
 import {
   collection, query, orderBy, onSnapshot,
-  addDoc, serverTimestamp, where, doc, getDoc,
+  addDoc, serverTimestamp, where, doc, getDoc, deleteDoc,
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { router } from "expo-router";
@@ -165,6 +165,32 @@ export default function SmsCenterScreen() {
   const [deviceId, setDeviceId]   = useState<string | null>(null);
   const [deviceLoading, setDeviceLoading] = useState(true);
 
+  const handleDelete = (id: string, collectionName: "sms_jobs" | "sms_inbox") => {
+    const doDelete = async () => {
+      try {
+        await deleteDoc(doc(db, collectionName, id));
+      } catch (e) {
+        console.error("Delete error:", e);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      // Alert.alert doesn't render on web — use browser confirm instead
+      if (window.confirm("Delete this message? Hindi na ito maibabalik.")) {
+        doDelete();
+      }
+    } else {
+      Alert.alert(
+        "Delete Message?",
+        "Hindi na ito maibabalik. Sigurado ka bang gusto mong burahin ang message na ito?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete", style: "destructive", onPress: doDelete },
+        ]
+      );
+    }
+  };
+
   // Resolve this user's gateway deviceId from their gateway_status doc.
   // This works even when browsing from a different phone than the gateway.
   useEffect(() => {
@@ -314,6 +340,12 @@ export default function SmsCenterScreen() {
                 </View>
               </View>
               <Text style={s.msgBody}>{item.body}</Text>
+              <Pressable
+                style={s.deleteBtn}
+                onPress={() => handleDelete(item.id, tab === "inbox" ? "sms_inbox" : "sms_jobs")}
+              >
+                <Text style={s.deleteBtnText}>🗑 Delete</Text>
+              </Pressable>
             </View>
           )}
         />
@@ -429,4 +461,7 @@ const cs = StyleSheet.create({
   sendBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
   cancelBtn: { alignItems: "center", paddingVertical: 12 },
   cancelText: { fontSize: 15, color: C.muted, fontWeight: "500" },
+
+  deleteBtn: { alignSelf: "flex-end", marginTop: 8, paddingVertical: 4, paddingHorizontal: 8 },
+  deleteBtnText: { fontSize: 12, color: C.error, fontWeight: "600" },
 });

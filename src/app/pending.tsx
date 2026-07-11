@@ -25,18 +25,17 @@ const C = {
   cardBorder: "#E8ECEF",
 };
 
-// What subscribers can preview while pending (read-only, no actions)
+// What pending users can preview — ONLY Upgrade Plan
 const PREVIEW_FEATURES = [
-  { icon: "📊", title: "Dashboard",       desc: "View your subscriber profile and plan details" },
-  { icon: "💬", title: "SMS Center",      desc: "Preview the SMS interface (sending locked)" },
-  { icon: "💳", title: "Payments",        desc: "View available plans and pricing" },
-  { icon: "🛡️", title: "AXA Insurance",  desc: "Learn about protection plans" },
+  { icon: "💳", title: "Upgrade Plan", desc: "View plans and choose your subscription", route: "/payments" },
+  { icon: "♟",  title: "SNBX Ranking", desc: "See the levels and rewards that await", route: "/ranking" },
 ];
 
 const LOCKED_FEATURES = [
-  { icon: "🔒", title: "Send SMS",        desc: "Unlocked after approval" },
-  { icon: "🔒", title: "Gateway Setup",   desc: "Unlocked after approval" },
-  { icon: "🔒", title: "GHL Integration", desc: "Unlocked after approval" },
+  { icon: "🔒", title: "Dashboard",             desc: "Unlocked after approval" },
+  { icon: "🔒", title: "SMS Center",            desc: "Unlocked after approval" },
+  { icon: "🔒", title: "SMS Gateway",           desc: "Unlocked after approval" },
+  { icon: "🔒", title: "Insurance & Financial", desc: "Unlocked after approval" },
 ];
 
 export default function PendingScreen() {
@@ -145,17 +144,21 @@ export default function PendingScreen() {
             </Text>
           </View>
 
-          {/* Preview features */}
-          <Text style={s.sectionLabel}>Available Now (Preview)</Text>
+          {/* Available now — Upgrade Plan only */}
+          <Text style={s.sectionLabel}>Available Now</Text>
           {PREVIEW_FEATURES.map((f) => (
-            <View key={f.title} style={s.featureCard}>
+            <Pressable
+              key={f.title}
+              style={({ pressed }) => [s.featureCard, pressed && { opacity: 0.7 }]}
+              onPress={() => router.push(f.route as any)}
+            >
               <Text style={s.featureIcon}>{f.icon}</Text>
               <View style={s.featureBody}>
                 <Text style={s.featureTitle}>{f.title}</Text>
                 <Text style={s.featureDesc}>{f.desc}</Text>
               </View>
               <Text style={s.featureArrow}>›</Text>
-            </View>
+            </Pressable>
           ))}
 
           {/* Locked features */}

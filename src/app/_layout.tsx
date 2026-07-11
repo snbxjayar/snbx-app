@@ -26,6 +26,8 @@ export default function RootLayout() {
       <Stack.Screen name="ranking" />
       <Stack.Screen name="insurance-financial" />
       <Stack.Screen name="guide" />
+      <Stack.Screen name="terminologies" />
+      <Stack.Screen name="resources" />
     </Stack>
   );
 }

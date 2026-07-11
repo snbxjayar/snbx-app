@@ -300,6 +300,11 @@ export default function DashboardScreen() {
         {/* Tools */}
         <Text style={[st.sectionLabel, { marginTop: 24 }]}>Your Tools</Text>
 
+<ToolCard
+          icon="📖" label="Terminologies" desc="Dictionary of GHL, marketing & business terms"
+          onPress={() => router.push("/terminologies" as any)}
+        />
+
         <ToolCard
           icon="💬" label="SMS Center" desc="Send & receive messages"
           locked={!canAccess("sms", profile)}
@@ -335,6 +340,11 @@ export default function DashboardScreen() {
         <ToolCard
           icon="♟" label="SNBX Ranking" desc="Track your level from Pawn to Master"
           onPress={() => router.push("/ranking" as any)}
+        />
+
+        <ToolCard
+          icon="📚" label="Resources" desc="Apps to install & important links"
+          onPress={() => router.push("/resources" as any)}
         />
 
         <ToolCard

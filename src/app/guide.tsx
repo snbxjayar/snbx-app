@@ -117,6 +117,18 @@ const GUIDES: GuideItem[] = [
       "Tapikin ang 'Save Changes' — instant na mag-a-update.",
     ],
   },
+  {
+    icon: "⏳",
+    title: "Sending Many SMS (Workflows)",
+    summary: "Paano gumagana ang bulk SMS via automation",
+    steps: [
+      "Kapag maraming SMS na ipapadala (halimbawa via workflow), isa-isa itong ipinapadala ng gateway phone mo.",
+      "Tumatagal ito ng ilang minuto o oras depende sa dami — pero tuloy-tuloy, hindi titigil.",
+      "Iwasan ang biglaang pagpadala ng daan-daang SMS sa maikling oras.",
+      "Mas maganda kung i-spread out ang pagpapadala sa mas mahabang oras kung malaki ang volume.",
+    ],
+    tip: "Ang layunin nito ay protektahan ang SIM mo laban sa spam-detection ng telco. Ginagawan din namin ito ng paraan sa mga susunod na update!",
+  },
 ];
 
 function GuideCard({ item }: { item: GuideItem }) {
