@@ -12,6 +12,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.messaging.FirebaseMessaging
@@ -20,11 +21,10 @@ import java.util.concurrent.TimeUnit
 import android.provider.Settings
 
 class GatewayService : Service() {
-
     private var firestoreListener: ListenerRegistration? = null
     private lateinit var db: FirebaseFirestore
-    private val CHANNEL_ID   = "snbx_gateway_channel"
-    private val NOTIF_ID     = 1001
+    private val CHANNEL_ID = "snbx_gateway_channel"
+    private val NOTIF_ID   = 1001
 
     override fun onCreate() {
         super.onCreate()
@@ -39,7 +39,7 @@ class GatewayService : Service() {
         subscribeToFcmTopic()
         scheduleWatchdog()
         Log.d("SNBXGateway", "Gateway service started")
-        return START_STICKY // Restart if killed by Android
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -52,9 +52,38 @@ class GatewayService : Service() {
 
     // ── FCM wake-up channel ───────────────────────────────────────────────────
     private fun subscribeToFcmTopic() {
+        // Keep topic subscription as fallback
         FirebaseMessaging.getInstance().subscribeToTopic("sms_gateway")
             .addOnCompleteListener { task ->
                 Log.d("SNBXGateway", "FCM topic subscribe: ${if (task.isSuccessful) "OK" else "FAILED"}")
+            }
+
+        // Also save this device's FCM token for targeted wake-ups
+        FirebaseMessaging.getInstance().token
+            .addOnSuccessListener { token ->
+                Log.d("SNBXGateway", "FCM token retrieved: ${token.take(20)}...")
+                saveFcmToken(token)
+            }
+            .addOnFailureListener { e ->
+                Log.e("SNBXGateway", "Failed to get FCM token: ${e.message}")
+            }
+    }
+
+    // ── Save FCM token to Firestore so backend can send targeted wake-ups ─────
+    private fun saveFcmToken(token: String) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid == null) {
+            Log.w("SNBXGateway", "Cannot save FCM token — user not logged in")
+            return
+        }
+        db.collection("gateway_status")
+            .document(uid)
+            .update("fcmToken", token)
+            .addOnSuccessListener {
+                Log.d("SNBXGateway", "FCM token saved to Firestore for uid $uid")
+            }
+            .addOnFailureListener { e ->
+                Log.e("SNBXGateway", "Failed to save FCM token: ${e.message}")
             }
     }
 
@@ -73,7 +102,6 @@ class GatewayService : Service() {
     // ── Listen for outgoing SMS jobs in Firestore (this device only) ──────────
     private fun startListening() {
         firestoreListener?.remove()
-
         val deviceId = Settings.Secure.getString(
             contentResolver,
             Settings.Secure.ANDROID_ID
@@ -89,15 +117,13 @@ class GatewayService : Service() {
                     Log.e("SNBXGateway", "Firestore listen error: ${error.message}")
                     return@addSnapshotListener
                 }
-
                 snapshots?.documentChanges?.forEach { change ->
                     if (change.type != com.google.firebase.firestore.DocumentChange.Type.ADDED) return@forEach
-                    val doc  = change.document
-                    val data = doc.data
-                    val to   = data["to"] as? String ?: return@forEach
-                    val body = data["body"] as? String ?: return@forEach
+                    val doc   = change.document
+                    val data  = doc.data
+                    val to    = data["to"] as? String ?: return@forEach
+                    val body  = data["body"] as? String ?: return@forEach
                     val jobId = doc.id
-
                     Log.d("SNBXGateway", "Processing job $jobId → $to")
                     processJob(jobId, to, body)
                 }
@@ -106,7 +132,6 @@ class GatewayService : Service() {
 
     // ── Process a single SMS job ──────────────────────────────────────────────
     private fun processJob(jobId: String, to: String, body: String) {
-        // Mark as processing immediately to avoid double-send
         db.collection("sms_jobs").document(jobId)
             .update("status", "processing", "processedAt", Date())
             .addOnSuccessListener {
@@ -117,26 +142,15 @@ class GatewayService : Service() {
                         @Suppress("DEPRECATION")
                         SmsManager.getDefault()
                     }
-
                     val parts = smsManager.divideMessage(body)
                     smsManager.sendMultipartTextMessage(to, null, parts, null, null)
-
-                    // Mark as sent
                     db.collection("sms_jobs").document(jobId)
-                        .update(
-                            "status", "sent",
-                            "sentAt", Date()
-                        )
+                        .update("status", "sent", "sentAt", Date())
                     Log.d("SNBXGateway", "Job $jobId sent to $to")
-
                 } catch (e: Exception) {
                     Log.e("SNBXGateway", "Send failed for job $jobId: ${e.message}")
                     db.collection("sms_jobs").document(jobId)
-                        .update(
-                            "status", "failed",
-                            "error", e.message,
-                            "failedAt", Date()
-                        )
+                        .update("status", "failed", "error", e.message, "failedAt", Date())
                 }
             }
     }

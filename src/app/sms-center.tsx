@@ -169,13 +169,14 @@ export default function SmsCenterScreen() {
     const doDelete = async () => {
       try {
         await deleteDoc(doc(db, collectionName, id));
-      } catch (e) {
+      } catch (e: any) {
         console.error("Delete error:", e);
+        // Show the real error on-screen since we can't see console on phone
+        Alert.alert("Delete Failed", `${e?.code ?? "unknown"}: ${e?.message ?? "Unknown error"}`);
       }
     };
 
     if (Platform.OS === "web") {
-      // Alert.alert doesn't render on web — use browser confirm instead
       if (window.confirm("Delete this message? Hindi na ito maibabalik.")) {
         doDelete();
       }

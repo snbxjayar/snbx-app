@@ -31,8 +31,19 @@ class SmsFcmService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
-        super.onNewToken(token)
-        Log.d("SNBXFcm", "New FCM token: $token")
-        // Topic-based for now — token not needed, but logged for future multi-tenant use.
+  super.onNewToken(token)
+  Log.d("SmsFcmService", "FCM token refreshed: $token")
+  // Save new token to Firestore so backend can send targeted wake-ups
+  val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
+  com.google.firebase.firestore.FirebaseFirestore.getInstance()
+    .collection("gateway_status")
+    .document(uid)
+    .update("fcmToken", token)
+    .addOnSuccessListener {
+      Log.d("SmsFcmService", "FCM token saved to Firestore")
     }
+    .addOnFailureListener { e ->
+      Log.e("SmsFcmService", "Failed to save FCM token: ${e.message}")
+    }
+}
 }
